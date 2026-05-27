@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#13602e">
+<title>Compostera — Campo</title>
+<style>
+:root{
+  --verde:#13602e; --verde2:#1a7a3a; --verde-cl:#e8f3ea;
+  --tierra:#8a5a2b; --ambar:#f0a500;
+  --ink:#1c2a22; --ink2:#4a5a50; --ink3:#7a8a80;
+  --bg:#f4f7f4; --card:#ffffff; --linea:#dde6de;
+  --rojo:#c0392b; --azul:#2c6e9c;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+  padding-bottom:30px; overscroll-behavior:none;
+}
+.oculto{display:none !important;}
+
+/* ---------- LOGIN ---------- */
+#login{
+  position:fixed; inset:0; background:linear-gradient(160deg,#13602e,#0d4521);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:24px; z-index:100; color:#fff;
+}
+#login .logo{font-size:54px; margin-bottom:8px;}
+#login h1{font-size:22px; font-weight:700; margin-bottom:4px; letter-spacing:.5px;}
+#login p{font-size:14px; opacity:.8; margin-bottom:28px;}
+.lcard{background:#fff; border-radius:18px; padding:22px; width:100%; max-width:380px; color:var(--ink); box-shadow:0 12px 40px rgba(0,0,0,.3);}
+.lcard label{display:block; font-size:13px; font-weight:600; color:var(--ink2); margin-bottom:7px; margin-top:14px;}
+.lcard label:first-child{margin-top:0;}
+.lcard select, .lcard input{
+  width:100%; padding:15px; font-size:18px; border:2px solid var(--linea);
+  border-radius:12px; background:#fafcfa; color:var(--ink);
+}
+.lcard select:focus, .lcard input:focus{outline:none; border-color:var(--verde2);}
+#pin{letter-spacing:8px; text-align:center; font-weight:700;}
+.btn-entrar{
+  width:100%; margin-top:22px; padding:16px; font-size:18px; font-weight:700;
+  background:var(--verde2); color:#fff; border:none; border-radius:12px; cursor:pointer;
+}
+.btn-entrar:active{background:var(--verde);}
+.lerror{color:var(--rojo); font-size:13px; text-align:center; margin-top:12px; min-height:18px; font-weight:600;}
+
+/* ---------- HEADER ---------- */
+.head{
+  position:sticky; top:0; z-index:50; background:var(--verde);
+  color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+.head .quien{display:flex; flex-direction:column;}
+.head .quien b{font-size:16px; font-weight:700;}
+.head .quien span{font-size:12px; opacity:.8;}
+.head .acc{display:flex; gap:8px;}
+.head button{
+  background:rgba(255,255,255,.15); color:#fff; border:none; border-radius:9px;
+  padding:9px 11px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;
+}
+.head button:active{background:rgba(255,255,255,.28);}
+
+/* ---------- CONTENIDO ---------- */
+.wrap{padding:16px; max-width:560px; margin:0 auto;}
+.seccion-tit{font-size:13px; font-weight:700; color:var(--ink3); text-transform:uppercase; letter-spacing:.8px; margin:22px 4px 10px;}
+.seccion-tit:first-child{margin-top:6px;}
+
+.pila-card{
+  background:var(--card); border:1px solid var(--linea); border-radius:14px;
+  padding:15px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.pila-card .top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;}
+.pila-card .cod{font-size:19px; font-weight:800; color:var(--verde);}
+.pila-card .edad{font-size:12px; color:var(--ink3);}
+.badge{font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; background:var(--verde-cl); color:var(--verde);}
+.tareas{display:flex; flex-direction:column; gap:7px; margin-top:6px;}
+.tarea{
+  display:flex; align-items:center; gap:9px; font-size:14px; padding:9px 11px;
+  background:#fff8e8; border:1px solid #f0d9a0; border-radius:9px; color:#7a5a10; font-weight:600;
+}
+.tarea.ok{background:#eaf6ec; border-color:#bfe0c4; color:var(--verde); text-decoration:none;}
+.tarea .ico{font-size:17px;}
+.acciones{display:flex; gap:8px; margin-top:13px;}
+.acciones button{
+  flex:1; padding:13px 6px; font-size:14px; font-weight:700; border:none; border-radius:11px;
+  cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; color:#fff;
+}
+.acciones .b-volteo{background:var(--verde2);}
+.acciones .b-mon{background:var(--azul);}
+.acciones .b-tras{background:var(--tierra);}
+.acciones button:active{filter:brightness(.9);}
+.acciones .em{font-size:21px;}
+
+.vacio{text-align:center; padding:40px 20px; color:var(--ink3);}
+.vacio .em{font-size:46px; display:block; margin-bottom:10px;}
+
+/* ---------- MODAL FORM ---------- */
+.modal{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:80; display:none; align-items:flex-end;}
+.modal.abierto{display:flex;}
+.sheet{
+  background:#fff; width:100%; max-height:92vh; overflow-y:auto; border-radius:20px 20px 0 0;
+  padding:20px 18px 30px; animation:subir .25s ease;
+}
+@keyframes subir{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.sheet h3{font-size:19px; font-weight:800; margin-bottom:4px; color:var(--verde);}
+.sheet .sub{font-size:13px; color:var(--ink3); margin-bottom:18px;}
+.campo{margin-bottom:15px;}
+.campo label{display:block; font-size:13px; font-weight:700; color:var(--ink2); margin-bottom:7px;}
+.campo input, .campo select, .campo textarea{
+  width:100%; padding:14px; font-size:17px; border:2px solid var(--linea);
+  border-radius:11px; background:#fafcfa; color:var(--ink); font-family:inherit;
+}
+.campo input:focus, .campo select:focus, .campo textarea:focus{outline:none; border-color:var(--verde2);}
+.trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+.trio .campo{margin-bottom:0;}
+.trio label{font-size:11px; text-align:center;}
+.trio input{text-align:center; padding:14px 4px;}
+.prom-box{background:var(--verde-cl); border-radius:10px; padding:11px; text-align:center; margin-top:10px; font-size:14px; color:var(--verde); font-weight:700;}
+.botones-modal{display:flex; gap:10px; margin-top:22px;}
+.botones-modal button{flex:1; padding:15px; font-size:16px; font-weight:700; border:none; border-radius:12px; cursor:pointer;}
+.b-cancelar{background:#eee; color:var(--ink2);}
+.b-guardar{background:var(--verde2); color:#fff;}
+.b-guardar:active{background:var(--verde);}
+.b-guardar:disabled{opacity:.5;}
+
+/* ---------- TOAST ---------- */
+#toast{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(100px);
+  background:var(--ink); color:#fff; padding:13px 22px; border-radius:30px; font-size:14px;
+  font-weight:600; z-index:200; transition:transform .3s; box-shadow:0 8px 24px rgba(0,0,0,.3); max-width:90%;
+}
+#toast.ver{transform:translateX(-50%) translateY(0);}
+#toast.err{background:var(--rojo);}
+#toast.ok{background:var(--verde2);}
+
+/* ---------- CARGANDO ---------- */
+#cargando{position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:90; flex-direction:column; color:var(--verde); gap:14px;}
+.spin{width:40px; height:40px; border:4px solid var(--verde-cl); border-top-color:var(--verde2); border-radius:50%; animation:girar .8s linear infinite;}
+@keyframes girar{to{transform:rotate(360deg);}}
+
+/* ---------- TURNO ---------- */
+.card-turno{background:var(--card);border:1px solid var(--linea);border-radius:14px;padding:22px;margin-top:8px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.card-turno h2{font-size:20px;font-weight:800;color:var(--verde);}
+.barra-turno{background:linear-gradient(90deg,var(--verde-cl),#fff);border:1px solid #cfe3d3;border-radius:12px;padding:11px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.btn-cerrar-turno{background:var(--tierra);color:#fff;border:none;padding:8px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-cerrar-turno:active{filter:brightness(.9);}
+
+/* ---------- LISTA DE TAREAS ---------- */
+.lista-tareas{background:var(--card);border:1px solid var(--linea);border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.fila-tarea{display:flex;align-items:center;gap:12px;padding:14px 14px;border-bottom:1px solid var(--linea);cursor:pointer;background:#fff;transition:background .15s;}
+.fila-tarea:last-child{border-bottom:none;}
+.fila-tarea:active{background:#f0f7f1;}
+.fila-tarea.hecha{cursor:default;opacity:.7;background:#fafcfa;}
+.fila-tarea.hecha:active{background:#fafcfa;}
+.ft-tipo{font-size:24px;flex-shrink:0;}
+.ft-info{flex:1;min-width:0;}
+.ft-titulo{font-size:15px;font-weight:600;color:var(--ink);}
+.ft-sub{font-size:12px;color:var(--ink3);margin-top:2px;}
+.ft-flecha{color:var(--ink3);font-size:22px;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<!-- PANTALLA DE CARGA -->
+<div id="cargando"><div class="spin"></div><div>Conectando…</div></div>
+
+<!-- LOGIN -->
+<div id="login" class="oculto">
+  <div class="logo">🌱</div>
+  <h1>COMPOSTERA</h1>
+  <p>Registro de campo</p>
+  <div class="lcard">
+    <label>¿Quién eres?</label>
+    <select id="sel-op"><option value="">Selecciona tu nombre…</option></select>
+    <label>Tu PIN (4 dígitos)</label>
+    <input type="tel" id="pin" maxlength="4" inputmode="numeric" placeholder="••••">
+    <button class="btn-entrar" onclick="entrar()">Entrar</button>
+    <div class="lerror" id="lerror"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="oculto">
+  <div class="head">
+    <div class="quien">
+      <b id="h-nombre">—</b>
+      <span id="h-fecha">—</span>
+    </div>
+    <div class="acc">
+      <button onclick="cargarDatos(true)">🔄 Actualizar</button>
+      <button onclick="salir()">Salir</button>
+    </div>
+  </div>
+  <div class="wrap" id="contenido"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="modal" onclick="if(event.target===this)cerrarModal()">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+//  CONFIGURACIÓN — debe coincidir con el puente de Google
+// ════════════════════════════════════════════════════════════════════
+const GS_URL   = 'https://script.google.com/macros/s/AKfycbwb12Ibn7_-_vlsHXzxrCnZrvmhe7rKHhvoFWMY0D273auq4IljiBF9zWzphGQyf94-8A/exec';
+const GS_TOKEN = 'compostera2026';
+
+// Estado en memoria
+let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{} };
+let OP = null;            // operario logueado
+let TURNO = null;         // turno abierto del día (si existe)
+let pilaActiva = null;    // pila seleccionada para registrar
+
+// ── Utilidades ──
+const hoy = () => new Date().toISOString().split('T')[0];
+const fechaLarga = () => new Date().toLocaleDateString('es-GT',{weekday:'long',day:'numeric',month:'long'});
+function edadDias(f){ if(!f) return null; return Math.round((new Date()-new Date(f+'T12:00:00'))/864e5); }
+function toast(msg,tipo){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.className='ver '+(tipo||'');
+  setTimeout(function(){t.className=t.className.replace('ver','').trim();},2800);
+}
+
+// ── Comunicación con Google ──
+function gsCargar(){
+  return fetch(GS_URL+'?accion=cargarTodo')
+    .then(function(r){return r.json();})
+    .then(function(res){
+      if(!res.ok) throw new Error(res.error||'error');
+      DATOS.pilas = res.pilas||[];
+      DATOS.acts  = res.acts||[];
+      DATOS.mons  = res.mons||[];
+      DATOS.movs  = res.movs||[];
+      DATOS.tareas = res.tareas||[];
+      DATOS.turnos = res.turnos||[];
+      DATOS.operarios = res.operarios||[];
+      DATOS.planes = (res.catalogos&&res.catalogos.planes)||{};
+      return true;
+    });
+}
+function gsAgregar(hoja,registro){
+  return fetch(GS_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({accion:'agregar',hoja:hoja,registro:registro,token:GS_TOKEN})
+  }).then(function(r){return r.json();});
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  ARRANQUE
+// ════════════════════════════════════════════════════════════════════
+gsCargar()
+  .then(function(){
+    document.getElementById('cargando').classList.add('oculto');
+    // ¿hay sesión recordada?
+    var rec=null;
+    try{ rec=JSON.parse(localStorage.getItem('comp_op_sesion')||'null'); }catch(e){}
+    if(rec && DATOS.operarios.find(function(o){return o.id===rec.id;})){
+      OP=rec; mostrarApp();
+    } else {
+      mostrarLogin();
+    }
+  })
+  .catch(function(err){
+    document.getElementById('cargando').innerHTML='<div style="text-align:center;color:#c0392b;padding:20px"><div style="font-size:40px">⚠️</div>No se pudo conectar.<br><span style="font-size:13px;color:#888">Revisa tu internet.</span><br><br><button onclick="location.reload()" style="padding:12px 24px;border:none;background:#1a7a3a;color:#fff;border-radius:10px;font-size:15px">Reintentar</button></div>';
+  });
+
+// ════════════════════════════════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════════════════════════════════
+function mostrarLogin(){
+  var sel=document.getElementById('sel-op');
+  var activos=DATOS.operarios.filter(function(o){return String(o.activo).toLowerCase()==='si';});
+  sel.innerHTML='<option value="">Selecciona tu nombre…</option>'+
+    activos.map(function(o){return '<option value="'+o.id+'">'+o.nombre+'</option>';}).join('');
+  document.getElementById('login').classList.remove('oculto');
+  document.getElementById('app').classList.add('oculto');
+}
+function entrar(){
+  var id=document.getElementById('sel-op').value;
+  var pin=document.getElementById('pin').value.trim();
+  var err=document.getElementById('lerror');
+  err.textContent='';
+  if(!id){ err.textContent='Selecciona tu nombre.'; return; }
+  if(!pin){ err.textContent='Escribe tu PIN.'; return; }
+  var o=DATOS.operarios.find(function(x){return x.id===id;});
+  if(!o){ err.textContent='Operario no encontrado.'; return; }
+  if(String(o.pin).trim()!==pin){ err.textContent='PIN incorrecto.'; return; }
+  OP={id:o.id,nombre:o.nombre};
+  try{ localStorage.setItem('comp_op_sesion',JSON.stringify(OP)); }catch(e){}
+  document.getElementById('pin').value='';
+  mostrarApp();
+}
+function salir(){
+  try{ localStorage.removeItem('comp_op_sesion'); }catch(e){}
+  OP=null;
+  mostrarLogin();
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  VISTA PRINCIPAL — plan del operario
+// ════════════════════════════════════════════════════════════════════
+function mostrarApp(){
+  document.getElementById('login').classList.add('oculto');
+  document.getElementById('app').classList.remove('oculto');
+  document.getElementById('h-nombre').textContent=OP.nombre;
+  document.getElementById('h-fecha').textContent=fechaLarga();
+  // ¿Hay turno abierto hoy de este operario?
+  TURNO = (DATOS.turnos||[]).find(function(t){
+    return t.opId===OP.id && t.fecha===hoy() && t.estado==='abierto';
+  })||null;
+  render();
+}
+
+function render(){
+  var cont=document.getElementById('contenido');
+  // Sin turno abierto: pedir que abra turno antes de hacer nada
+  if(!TURNO){ cont.innerHTML = vistaAbrirTurno(); return; }
+  // Tareas pendientes asignadas a este operario
+  var pend=(DATOS.tareas||[]).filter(function(t){
+    return t.opId===OP.id && t.estado==='pendiente';
+  });
+  pend.sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  // Tareas ejecutadas hoy por este operario
+  var hechasHoy=(DATOS.tareas||[]).filter(function(t){
+    return t.opId===OP.id && t.estado==='ejecutada' && t.fecha===hoy();
+  });
+
+  var html = barraTurno();
+
+  if(pend.length){
+    html+='<div class="seccion-tit">Tareas pendientes ('+pend.length+')</div>';
+    html+='<div class="lista-tareas">'+pend.map(function(t){ return filaTarea(t); }).join('')+'</div>';
+  } else {
+    html+='<div class="vacio" style="padding:24px"><span class="em">🎉</span>¡Todo al día!<br><span style="font-size:13px">No tienes tareas pendientes.</span></div>';
+  }
+
+  if(hechasHoy.length){
+    html+='<div class="seccion-tit">Completadas hoy ('+hechasHoy.length+')</div>';
+    html+='<div class="lista-tareas">'+hechasHoy.map(function(t){
+      var tipo = t.tipo==='volteo'?'🔄 Volteo / Riego':'🌡️ Monitoreo';
+      var horas = (t.horoIni && t.horoFin) ? (' · '+(t.horoFin-t.horoIni).toFixed(2)+'h') : '';
+      return '<div class="fila-tarea hecha">'+
+        '<div class="ft-tipo">✅</div>'+
+        '<div class="ft-info"><b>'+t.pila+'</b> <span style="color:var(--ink3);font-size:12px">'+tipo+horas+'</span></div>'+
+        '</div>';
+    }).join('')+'</div>';
+  }
+
+  cont.innerHTML=html;
+}
+
+// Vista de "Abrir turno"
+function vistaAbrirTurno(){
+  return '<div class="card-turno">'+
+    '<h2 style="margin-bottom:6px">🌅 Iniciar turno</h2>'+
+    '<p style="color:var(--ink3);font-size:14px;margin-bottom:18px">Antes de empezar, registra el equipo que usarás y el horómetro inicial del día.</p>'+
+    '<div class="campo"><label>Equipo del día</label><select id="t-equipo">'+equiposOpts('Backhus 1')+'</select></div>'+
+    '<div class="campo"><label>Horómetro inicial</label><input type="number" id="t-hi" step="0.1" inputmode="decimal" placeholder="Ej: 1245.5"></div>'+
+    '<button class="btn-entrar" onclick="abrirTurno()" style="margin-top:6px">Abrir turno y ver tareas</button>'+
+    '</div>';
+}
+
+// Barra superior con info de turno + botón cerrar
+function barraTurno(){
+  return '<div class="barra-turno">'+
+    '<div><b>🚜 '+(TURNO.equipo||'Equipo')+'</b><span style="color:var(--ink3);font-size:12px;margin-left:10px">H. ini: '+TURNO.horoIni+'</span></div>'+
+    '<button class="btn-cerrar-turno" onclick="vistaCerrarTurno()">Cerrar turno</button>'+
+    '</div>';
+}
+
+// Una fila de tarea (lista compacta)
+function filaTarea(t){
+  var p=DATOS.pilas.find(function(x){return x.cod===t.pila;})||{};
+  var edad=edadDias(p.fecha);
+  var esVolteo = t.tipo==='volteo';
+  var icono = esVolteo?'🔄':'🌡️';
+  var titulo = esVolteo?'Volteo / Riego':'Monitoreo';
+  var atrasada = t.fecha < hoy();
+  var fnExec = esVolteo ? 'ejecutarVolteo' : 'ejecutarMonitoreo';
+  return '<div class="fila-tarea" onclick="'+fnExec+'(\''+t.id+'\')">'+
+    '<div class="ft-tipo">'+icono+'</div>'+
+    '<div class="ft-info">'+
+      '<div class="ft-titulo">'+titulo+' · <b>'+t.pila+'</b></div>'+
+      '<div class="ft-sub">'+(edad!=null?(edad+' días'):'—')+(p.ca?(' · '+p.ca+' TM'):'')+
+      (atrasada?' · <span style="color:#c0392b;font-weight:600">Atrasada</span>':' · '+fmtCorto(t.fecha))+'</div>'+
+    '</div>'+
+    '<div class="ft-flecha">›</div>'+
+  '</div>';
+}
+
+function fmtCorto(f){ if(!f) return '—'; var p=f.split('-'); return p[2]+'/'+p[1]; }
+
+// ════════════════════════════════════════════════════════════════════
+//  MODALES DE REGISTRO
+// ════════════════════════════════════════════════════════════════════
+function abrirModal(html){
+  document.getElementById('sheet').innerHTML=html;
+  document.getElementById('modal').classList.add('abierto');
+}
+function cerrarModal(){ document.getElementById('modal').classList.remove('abierto'); }
+
+// ── VOLTEO / RIEGO ──
+// ── ABRIR / CERRAR TURNO ──
+function abrirTurno(){
+  var equipo = document.getElementById('t-equipo').value;
+  var hi = parseFloat(document.getElementById('t-hi').value);
+  if(isNaN(hi)||hi<0){ toast('Indica el horómetro inicial','err'); return; }
+  if(!equipo){ toast('Selecciona el equipo','err'); return; }
+  var t = {
+    id: uid(), opId: OP.id, operario: OP.nombre, fecha: hoy(),
+    equipo: equipo, horoIni: hi, horoFin: '', estado: 'abierto', creada: hoy()
+  };
+  gsAgregar('turnos', t).then(function(res){
+    if(res.ok){
+      DATOS.turnos.push(t);
+      TURNO = t;
+      render();
+      toast('✅ Turno abierto','ok');
+    } else { toast('Error: '+(res.error||'no se guardó'),'err'); }
+  }).catch(function(){ toast('Sin conexión','err'); });
+}
+
+function vistaCerrarTurno(){
+  // muestra modal con el horómetro final
+  var hechas = (DATOS.tareas||[]).filter(function(t){
+    return t.opId===OP.id && t.estado==='ejecutada' && t.fecha===hoy() && t.tipo==='volteo';
+  });
+  var horasAsign = hechas.reduce(function(s,t){
+    var h = (t.horoIni && t.horoFin) ? (t.horoFin-t.horoIni) : 0;
+    return s + (isNaN(h)?0:h);
+  },0);
+  abrirModal(
+    '<h3>🌙 Cerrar turno</h3><div class="sub">Captura el horómetro final del día</div>'+
+    '<div class="campo"><label>Horómetro inicial (turno)</label><input type="number" value="'+TURNO.horoIni+'" disabled></div>'+
+    '<div class="campo"><label>Horas asignadas a pilas hoy</label><input type="number" value="'+horasAsign.toFixed(2)+'" disabled></div>'+
+    '<div class="campo"><label>Horómetro final <span style="color:#c0392b">*</span></label><input type="number" id="t-hf" step="0.1" inputmode="decimal" placeholder="Lectura final del horómetro" autofocus></div>'+
+    '<div style="background:#fff8e1;border-radius:8px;padding:10px;font-size:12px;color:#7a5a10;margin-top:10px">⚠️ Al cerrar el turno, ya no podrás registrar más labores hoy con este equipo.</div>'+
+    botonesModal('cerrarTurno()')
+  );
+}
+
+function cerrarTurno(){
+  var hf = parseFloat(document.getElementById('t-hf').value);
+  if(isNaN(hf)||hf<=TURNO.horoIni){
+    toast('El horómetro final debe ser mayor al inicial ('+TURNO.horoIni+')','err'); return;
+  }
+  bloquear(true);
+  fetch(GS_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({accion:'editar',hoja:'turnos',idCampo:'id',idValor:TURNO.id,
+      registro:{horoFin:hf,estado:'cerrado'},token:GS_TOKEN})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res.ok){
+      TURNO.horoFin = hf; TURNO.estado = 'cerrado'; TURNO = null;
+      cerrarModal(); render();
+      toast('✅ Turno cerrado. Los costos quedarán calculados en el admin.','ok');
+    } else { toast('Error: '+(res.error||'no se guardó'),'err'); bloquear(false); }
+  }).catch(function(){ toast('Sin conexión','err'); bloquear(false); });
+}
+
+// ── EJECUTAR VOLTEO con horómetros ──
+let tareaActiva=null;
+
+function ejecutarVolteo(tareaId){
+  var t=(DATOS.tareas||[]).find(function(x){return x.id===tareaId;});
+  if(!t){ toast('Tarea no encontrada','err'); return; }
+  tareaActiva=t; pilaActiva=t.pila;
+  abrirModal(
+    '<h3>🔄 Volteo / Riego</h3><div class="sub">Pila '+t.pila+'</div>'+
+    '<div class="campo"><label>Tipo de labor</label><select id="v-labor">'+
+      '<option value="Volteo"'+(t.obs==='Volteo'?' selected':'')+'>Volteo</option>'+
+      '<option value="Riego + Volteo"'+(t.obs==='Riego + Volteo'?' selected':'')+'>Riego + Volteo</option>'+
+      '<option value="Riego"'+(t.obs==='Riego'?' selected':'')+'>Riego</option>'+
+    '</select></div>'+
+    '<div class="trio">'+
+      '<div class="campo"><label>Horómetro inicial</label><input type="number" id="v-hi" step="0.1" inputmode="decimal" oninput="calcHoras()" placeholder="Ej: '+TURNO.horoIni+'"></div>'+
+      '<div class="campo"><label>Horómetro final</label><input type="number" id="v-hf" step="0.1" inputmode="decimal" oninput="calcHoras()" placeholder="Mayor que el inicial"></div>'+
+      '<div class="campo"><label>Horas</label><input type="text" id="v-horas-calc" disabled value="—" style="text-align:center;font-weight:700"></div>'+
+    '</div>'+
+    '<div class="campo"><label>Observaciones (opcional)</label><textarea id="v-obs" rows="2" placeholder="Algo que reportar…"></textarea></div>'+
+    botonesModal('guardarVolteo()')
+  );
+}
+function calcHoras(){
+  var hi=parseFloat(document.getElementById('v-hi').value);
+  var hf=parseFloat(document.getElementById('v-hf').value);
+  var box=document.getElementById('v-horas-calc');
+  if(!isNaN(hi)&&!isNaN(hf)&&hf>hi){ box.value=(hf-hi).toFixed(2)+' h'; }
+  else { box.value='—'; }
+}
+function guardarVolteo(){
+  var labor=document.getElementById('v-labor').value;
+  var hi=parseFloat(document.getElementById('v-hi').value);
+  var hf=parseFloat(document.getElementById('v-hf').value);
+  var obs=document.getElementById('v-obs').value;
+  if(isNaN(hi)||isNaN(hf)){ toast('Indica horómetro inicial y final','err'); return; }
+  if(hf<=hi){ toast('El horómetro final debe ser mayor al inicial','err'); return; }
+  var horas = hf - hi;
+  bloquear(true);
+  // 1) crea la actividad con horas calculadas y equipo del turno
+  var reg={
+    id:uid(), pila:pilaActiva, fecha:hoy(), labor:labor,
+    equipo:TURNO.equipo, eqId:'', horas:horas, ch:0, cost:0,
+    op:OP.nombre, obs:obs
+  };
+  gsAgregar('acts',reg).then(function(res){
+    if(!res.ok){ toast('Error: '+(res.error||'no se guardó'),'err'); bloquear(false); return; }
+    DATOS.acts.push(reg);
+    // 2) marca la tarea como ejecutada y guarda horómetros
+    marcarTareaEjecutada(tareaActiva, hi, hf);
+    cerrarModal(); render(); toast('✅ Volteo registrado','ok');
+  }).catch(function(){ toast('Sin conexión. Intenta de nuevo','err'); bloquear(false); });
+}
+
+// Marca una tarea como ejecutada y guarda sus horómetros
+function marcarTareaEjecutada(t, hi, hf){
+  if(!t)return;
+  t.estado='ejecutada';
+  if(hi!=null) t.horoIni=hi;
+  if(hf!=null) t.horoFin=hf;
+  var reg = {estado:'ejecutada'};
+  if(hi!=null) reg.horoIni=hi;
+  if(hf!=null) reg.horoFin=hf;
+  fetch(GS_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({accion:'editar',hoja:'tareas',idCampo:'id',idValor:t.id,registro:reg,token:GS_TOKEN})
+  }).catch(function(){});
+}
+
+// ── MONITOREO ──
+function ejecutarMonitoreo(tareaId){
+  var t=(DATOS.tareas||[]).find(function(x){return x.id===tareaId;});
+  if(!t){ toast('Tarea no encontrada','err'); return; }
+  tareaActiva=t; pilaActiva=t.pila;
+  abrirModal(
+    '<h3>🌡️ Monitoreo</h3><div class="sub">Pila '+t.pila+'</div>'+
+    '<div class="campo"><label>Temperaturas (°F) — 3 puntos</label>'+
+      '<div class="trio">'+
+        '<div class="campo"><label>Punto 1</label><input type="number" id="m-t1" step="0.5" inputmode="decimal" oninput="calcProm()" placeholder="°F"></div>'+
+        '<div class="campo"><label>Punto 2</label><input type="number" id="m-t2" step="0.5" inputmode="decimal" oninput="calcProm()" placeholder="°F"></div>'+
+        '<div class="campo"><label>Punto 3</label><input type="number" id="m-t3" step="0.5" inputmode="decimal" oninput="calcProm()" placeholder="°F"></div>'+
+      '</div>'+
+      '<div class="prom-box" id="m-prom">Promedio: —</div>'+
+    '</div>'+
+    '<div class="campo"><label>Humedad (%)</label><input type="number" id="m-hum" min="0" max="100" inputmode="numeric" placeholder="Ej: 60"></div>'+
+    '<div class="campo"><label>Estado visual</label><select id="m-estado">'+
+      '<option value="Bueno — estructura uniforme">Bueno — estructura uniforme</option>'+
+      '<option value="Regular — requiere atención">Regular — requiere atención</option>'+
+      '<option value="Seco — necesita riego">Seco — necesita riego</option>'+
+      '<option value="Muy húmedo">Muy húmedo</option>'+
+    '</select></div>'+
+    '<div class="campo"><label>Observaciones (opcional)</label><textarea id="m-obs" rows="2"></textarea></div>'+
+    botonesModal('guardarMonitoreo()')
+  );
+}
+function calcProm(){
+  var t1=parseFloat(document.getElementById('m-t1').value);
+  var t2=parseFloat(document.getElementById('m-t2').value);
+  var t3=parseFloat(document.getElementById('m-t3').value);
+  var vals=[t1,t2,t3].filter(function(v){return !isNaN(v);});
+  var box=document.getElementById('m-prom');
+  if(vals.length){ var p=vals.reduce(function(a,b){return a+b;},0)/vals.length; box.textContent='Promedio: '+p.toFixed(1)+' °F'; }
+  else box.textContent='Promedio: —';
+}
+function guardarMonitoreo(){
+  var t1=parseFloat(document.getElementById('m-t1').value);
+  var t2=parseFloat(document.getElementById('m-t2').value);
+  var t3=parseFloat(document.getElementById('m-t3').value);
+  var hum=parseFloat(document.getElementById('m-hum').value);
+  var estado=document.getElementById('m-estado').value;
+  var obs=document.getElementById('m-obs').value;
+  var vals=[t1,t2,t3].filter(function(v){return !isNaN(v);});
+  if(!vals.length){ toast('Ingresa al menos una temperatura','err'); return; }
+  var prom=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10;
+  bloquear(true);
+  var reg={
+    id:uid(), pila:pilaActiva, fecha:hoy(),
+    t1:isNaN(t1)?null:t1, t2:isNaN(t2)?null:t2, t3:isNaN(t3)?null:t3,
+    prom:prom, hum:isNaN(hum)?null:hum, estado:estado, obs:obs
+  };
+  gsAgregar('mons',reg).then(function(res){
+    if(res.ok){
+      DATOS.mons.push(reg);
+      marcarTareaEjecutada(tareaActiva);
+      cerrarModal(); render(); toast('✅ Monitoreo registrado','ok');
+    } else { toast('Error: '+(res.error||'no se guardó'),'err'); bloquear(false); }
+  }).catch(function(){ toast('Sin conexión. Intenta de nuevo','err'); bloquear(false); });
+}
+
+// ── TRASLADO ──
+function abrirTraslado(cod){
+  pilaActiva=cod;
+  abrirModal(
+    '<h3>🚛 Traslado</h3><div class="sub">Pila '+cod+'</div>'+
+    '<div class="campo"><label>Destino</label><input type="text" id="t-dest" placeholder="Ej: Montículo 1, bodega…"></div>'+
+    '<div class="campo"><label>Toneladas trasladadas (TM)</label><input type="number" id="t-tm" step="0.1" min="0" inputmode="decimal" placeholder="Ej: 12.5"></div>'+
+    '<div class="campo"><label>Observaciones (opcional)</label><textarea id="t-obs" rows="2"></textarea></div>'+
+    botonesModal('guardarTraslado()')
+  );
+}
+function guardarTraslado(){
+  var dest=document.getElementById('t-dest').value.trim();
+  var tm=parseFloat(document.getElementById('t-tm').value);
+  var obs=document.getElementById('t-obs').value;
+  if(!dest){ toast('Indica el destino','err'); return; }
+  if(isNaN(tm)||tm<=0){ toast('Indica las toneladas','err'); return; }
+  bloquear(true);
+  var reg={
+    id:Date.now().toString(), pila:pilaActiva, fecha:hoy(), tipo:'Traslado',
+    orig:pilaActiva, dest:dest, tm:tm, dist:0, ct:0, costEq:0, costCamion:0,
+    t1:null,t2:null,t3:null,prom:null,hum:null,pct:null, estado:'Registrado por '+OP.nombre+(obs?(' — '+obs):'')
+  };
+  gsAgregar('movs',reg).then(function(res){
+    if(res.ok){ DATOS.movs.push(reg); cerrarModal(); render(); toast('✅ Traslado registrado','ok'); }
+    else { toast('Error: '+(res.error||'no se guardó'),'err'); bloquear(false); }
+  }).catch(function(){ toast('Sin conexión. Intenta de nuevo','err'); bloquear(false); });
+}
+
+// ── Helpers de UI ──
+function equiposOpts(sel){
+  var lista=['Backhus 1','Backhus 2','Cargador Frontal','Tractor + implemento','Retroexcavadora','Manual'];
+  if(sel && lista.indexOf(sel)<0) lista.unshift(sel);
+  return lista.map(function(e){return '<option value="'+e+'"'+(sel===e?' selected':'')+'>'+e+'</option>';}).join('');
+}
+// Generador de id robusto (igual que en el admin)
+function uid(){ return 't'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36); }
+function botonesModal(fnGuardar){
+  return '<div class="botones-modal">'+
+    '<button class="b-cancelar" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="b-guardar" id="btn-guardar" onclick="'+fnGuardar+'">Guardar</button>'+
+  '</div>';
+}
+function bloquear(si){
+  var b=document.getElementById('btn-guardar');
+  if(b){ b.disabled=si; b.textContent=si?'Guardando…':'Guardar'; }
+}
+
+// ── Recargar manualmente ──
+function cargarDatos(manual){
+  if(manual) toast('Actualizando…');
+  gsCargar().then(function(){
+    if(OP) render();
+    if(manual) toast('✅ Actualizado','ok');
+  }).catch(function(){ toast('No se pudo actualizar','err'); });
+}
+</script>
+</body>
+</html>
