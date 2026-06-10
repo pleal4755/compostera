@@ -2655,12 +2655,13 @@ function rKanbanMon(){
       var tempFecha=mon&&mon.fecha?fmt(mon.fecha):'—';
       var humData=lastHumData(p.cod);
       var humStr=humData?humData.hum+'/5':'—';
+      var nv=totalVolteos(p.cod);
       return kcardDiv(p.cod,inPlan,'toggleKanbanMonPlan')
         +'<div class="kcard-top">'
           +'<span class="kcard-cod">'+p.cod+'</span>'
           +'<span class="kcard-temp '+tc+'">'+temp+'</span>'
         +'</div>'
-        +'<div class="kcard-info">'+enm(p)+' · Hum: '+humStr+'</div>'
+        +'<div class="kcard-info">'+dB(p.fecha,td())+'d · '+enm(p)+' · '+nv+' volt.</div>'
         +'<div style="font-size:9.5px;color:var(--ink4);margin-top:3px;line-height:1.8">'
           +'<i class="ti ti-thermometer" style="font-size:10px;color:var(--sk2)"></i> '+tempFecha
           +' &nbsp;<i class="ti ti-tractor" style="font-size:10px;color:var(--ms3)"></i> '+voltFecha
