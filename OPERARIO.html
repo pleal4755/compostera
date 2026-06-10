@@ -211,7 +211,7 @@ const GS_URL   = 'https://script.google.com/macros/s/AKfycbwb12Ibn7_-_vlsHXzxrCn
 const GS_TOKEN = 'compostera2026';
 
 // Estado en memoria
-let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{} };
+let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{}, eqs:[] };
 let OP = null;            // operario logueado
 let TURNO = null;         // turno abierto del día (si existe)
 let pilaActiva = null;    // pila seleccionada para registrar
@@ -238,6 +238,7 @@ function gsCargar(){
       DATOS.movs  = res.movs||[];
       DATOS.tareas = res.tareas||[];
       DATOS.turnos = res.turnos||[];
+      DATOS.eqs = (res.catalogos && res.catalogos.eqs) || [];
       DATOS.operarios = res.operarios||[];
       DATOS.planes = (res.catalogos&&res.catalogos.planes)||{};
       return true;
@@ -319,19 +320,36 @@ function mostrarApp(){
 
 function render(){
   var cont=document.getElementById('contenido');
-  // Sin turno abierto: pedir que abra turno antes de hacer nada
-  if(!TURNO){ cont.innerHTML = vistaAbrirTurno(); return; }
   // Tareas pendientes asignadas a este operario
   var pend=(DATOS.tareas||[]).filter(function(t){
     return t.opId===OP.id && t.estado==='pendiente';
   });
-  pend.sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  // Orden de campo: el operario recorre las pilas en la secuencia física.
+  // Sin orden definido → al final. A igual orden, por fecha.
+  function ordCampo(cod){
+    var o=(DATOS.planes[cod]||{}).orden;
+    return (o==null||o==='')?null:parseFloat(o);
+  }
+  pend.sort(function(a,b){
+    var oa=ordCampo(a.pila),ob=ordCampo(b.pila);
+    if(oa==null&&ob==null) return (a.fecha||'').localeCompare(b.fecha||'');
+    if(oa==null) return 1;
+    if(ob==null) return -1;
+    if(oa!==ob) return oa-ob;
+    return (a.fecha||'').localeCompare(b.fecha||'');
+  });
+
+  // ¿Hay tareas de volteo? Solo entonces se exige abrir turno (horómetro).
+  // Las tareas de monitoreo no usan máquina y no requieren turno.
+  var tieneVolteos = pend.some(function(t){ return t.tipo==='volteo'; });
+  if(tieneVolteos && !TURNO){ cont.innerHTML = vistaAbrirTurno(); return; }
+
   // Tareas ejecutadas hoy por este operario
   var hechasHoy=(DATOS.tareas||[]).filter(function(t){
     return t.opId===OP.id && t.estado==='ejecutada' && t.fecha===hoy();
   });
 
-  var html = barraTurno();
+  var html = TURNO ? barraTurno() : '';
 
   if(pend.length){
     html+='<div class="seccion-tit">Tareas pendientes ('+pend.length+')</div>';
@@ -542,21 +560,17 @@ function ejecutarMonitoreo(tareaId){
   tareaActiva=t; pilaActiva=t.pila;
   abrirModal(
     '<h3>🌡️ Monitoreo</h3><div class="sub">Pila '+t.pila+'</div>'+
-    '<div class="campo"><label>Temperaturas (°F) — 3 puntos</label>'+
+    '<div class="campo"><label>Temperaturas (°F) — 4 puntos</label>'+
       '<div class="trio">'+
         '<div class="campo"><label>Punto 1</label><input type="number" id="m-t1" step="0.5" inputmode="decimal" oninput="calcProm()" placeholder="°F"></div>'+
         '<div class="campo"><label>Punto 2</label><input type="number" id="m-t2" step="0.5" inputmode="decimal" oninput="calcProm()" placeholder="°F"></div>'+
         '<div class="campo"><label>Punto 3</label><input type="number" id="m-t3" step="0.5" inputmode="decimal" oninput="calcProm()" placeholder="°F"></div>'+
+        '<div class="campo"><label>Punto 4</label><input type="number" id="m-t4" step="0.5" inputmode="decimal" oninput="calcProm()" placeholder="°F"></div>'+
       '</div>'+
       '<div class="prom-box" id="m-prom">Promedio: —</div>'+
     '</div>'+
-    '<div class="campo"><label>Humedad (%)</label><input type="number" id="m-hum" min="0" max="100" inputmode="numeric" placeholder="Ej: 60"></div>'+
-    '<div class="campo"><label>Estado visual</label><select id="m-estado">'+
-      '<option value="Bueno — estructura uniforme">Bueno — estructura uniforme</option>'+
-      '<option value="Regular — requiere atención">Regular — requiere atención</option>'+
-      '<option value="Seco — necesita riego">Seco — necesita riego</option>'+
-      '<option value="Muy húmedo">Muy húmedo</option>'+
-    '</select></div>'+
+    '<div class="campo"><label>Humedad (1–5)</label><input type="number" id="m-hum" min="1" max="5" step="1" inputmode="numeric" placeholder="1=seco · 5=húmedo"></div>'+
+    '<div class="campo"><label>Estado físico (1–5)</label><input type="number" id="m-estado" min="1" max="5" step="1" inputmode="numeric" placeholder="código 1–5"></div>'+
     '<div class="campo"><label>Observaciones (opcional)</label><textarea id="m-obs" rows="2"></textarea></div>'+
     botonesModal('guardarMonitoreo()')
   );
@@ -565,7 +579,8 @@ function calcProm(){
   var t1=parseFloat(document.getElementById('m-t1').value);
   var t2=parseFloat(document.getElementById('m-t2').value);
   var t3=parseFloat(document.getElementById('m-t3').value);
-  var vals=[t1,t2,t3].filter(function(v){return !isNaN(v);});
+  var t4=parseFloat(document.getElementById('m-t4').value);
+  var vals=[t1,t2,t3,t4].filter(function(v){return !isNaN(v);});
   var box=document.getElementById('m-prom');
   if(vals.length){ var p=vals.reduce(function(a,b){return a+b;},0)/vals.length; box.textContent='Promedio: '+p.toFixed(1)+' °F'; }
   else box.textContent='Promedio: —';
@@ -574,16 +589,17 @@ function guardarMonitoreo(){
   var t1=parseFloat(document.getElementById('m-t1').value);
   var t2=parseFloat(document.getElementById('m-t2').value);
   var t3=parseFloat(document.getElementById('m-t3').value);
-  var hum=parseFloat(document.getElementById('m-hum').value);
-  var estado=document.getElementById('m-estado').value;
+  var t4=parseFloat(document.getElementById('m-t4').value);
+  var hum=parseInt(document.getElementById('m-hum').value);
+  var estado=parseInt(document.getElementById('m-estado').value)||null;
   var obs=document.getElementById('m-obs').value;
-  var vals=[t1,t2,t3].filter(function(v){return !isNaN(v);});
+  var vals=[t1,t2,t3,t4].filter(function(v){return !isNaN(v);});
   if(!vals.length){ toast('Ingresa al menos una temperatura','err'); return; }
   var prom=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10;
   bloquear(true);
   var reg={
     id:uid(), pila:pilaActiva, fecha:hoy(),
-    t1:isNaN(t1)?null:t1, t2:isNaN(t2)?null:t2, t3:isNaN(t3)?null:t3,
+    t1:isNaN(t1)?null:t1, t2:isNaN(t2)?null:t2, t3:isNaN(t3)?null:t3, t4:isNaN(t4)?null:t4,
     prom:prom, hum:isNaN(hum)?null:hum, estado:estado, obs:obs
   };
   gsAgregar('mons',reg).then(function(res){
@@ -626,7 +642,11 @@ function guardarTraslado(){
 
 // ── Helpers de UI ──
 function equiposOpts(sel){
-  var lista=['Backhus 1','Backhus 2','Cargador Frontal','Tractor + implemento','Retroexcavadora','Manual'];
+  // Usa el catálogo de equipos del admin (DATOS.eqs). Si está vacío por algún motivo,
+  // cae a una lista mínima para no romper.
+  var lista = (DATOS.eqs && DATOS.eqs.length)
+    ? DATOS.eqs.map(function(e){return e.n;})
+    : ['Cargador Frontal','Tractor + implemento','Retroexcavadora','Manual'];
   if(sel && lista.indexOf(sel)<0) lista.unshift(sel);
   return lista.map(function(e){return '<option value="'+e+'"'+(sel===e?' selected':'')+'>'+e+'</option>';}).join('');
 }
