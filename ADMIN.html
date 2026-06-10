@@ -467,7 +467,7 @@ td.hi{background:var(--ms6)}
               <thead>
                 <tr>
                   <th style="width:28px"></th>
-                  <th>Pila</th><th>Etapa</th><th>Urgencia</th>
+                  <th>Pila</th><th>Edad</th><th>Etapa</th><th>Urgencia</th>
                   <th>Labor</th><th>Equipo</th><th>Horas</th><th>Operario</th>
                   <th>Últ. volteo</th><th>Volteos</th><th>Últ. temp.</th><th>Últ. hum.</th>
                 </tr>
@@ -532,7 +532,7 @@ td.hi{background:var(--ms6)}
               <thead>
                 <tr>
                   <th style="width:28px"></th>
-                  <th>Pila</th><th>Etapa</th><th>Urgencia</th>
+                  <th>Pila</th><th>Edad</th><th>Etapa</th><th>Urgencia</th><th>Volteos</th>
                   <th>Últ. mon.</th><th>Últ. temp.</th><th>Últ. hum.</th><th>Operario</th>
                   <th class="dhi">T1 °F</th><th class="dhi">T2 °F</th><th class="dhi">T3 °F</th><th class="dhi">T4 °F</th><th class="dhi">Prom.</th>
                   <th>Humedad 1-5</th><th>Estado 1-5</th>
@@ -1557,7 +1557,7 @@ function chEst(c,e){const p=DB.pilas.find(x=>x.cod===c);if(p){p.estado=e;gsEdita
 function rActs(){
   var tb2=document.getElementById('acts-tb');
   var flt=(document.getElementById('flt-acts-pila')?document.getElementById('flt-acts-pila').value:'').toLowerCase().trim();
-  var data=[...DB.acts].sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+  var data=[...DB.acts].sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
   if(flt) data=data.filter(function(a){return a.pila.toLowerCase().indexOf(flt)>=0;});
   var cnt=document.getElementById('acts-count');
   if(cnt) cnt.textContent=flt?(data.length+' de '+DB.acts.length+' registros'):'';
@@ -1581,7 +1581,7 @@ function rActs(){
 function rMons(){
   var tb2=document.getElementById('mon-tb'); var c=DB.cfg;
   var flt=(document.getElementById('flt-mon-pila')?document.getElementById('flt-mon-pila').value:'').toLowerCase().trim();
-  var data=[...DB.mons].sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+  var data=[...DB.mons].sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
   if(flt) data=data.filter(function(m){return m.pila.toLowerCase().indexOf(flt)>=0;});
   var cnt=document.getElementById('mon-reg-count');
   if(cnt) cnt.textContent=flt?(data.length+' de '+DB.mons.length+' registros'):'';
@@ -1615,7 +1615,7 @@ function rMons(){
 function rMovs(){
   var tb2=document.getElementById('movs-tb');
   var flt=(document.getElementById('flt-movs-pila')?document.getElementById('flt-movs-pila').value:'').toLowerCase().trim();
-  var data=DB.movs.slice();
+  var data=DB.movs.slice().sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
   if(flt) data=data.filter(function(m){
     return m.orig.toLowerCase().indexOf(flt)>=0||m.dest.toLowerCase().indexOf(flt)>=0;
   });
@@ -1641,7 +1641,7 @@ function rMovs(){
 function rDesps(){
   var tb2=document.getElementById('desps-tb');
   var flt=(document.getElementById('flt-desps-pila')?document.getElementById('flt-desps-pila').value:'').toLowerCase().trim();
-  var data=[...DB.desps].sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+  var data=[...DB.desps].sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
   if(flt) data=data.filter(function(d){return d.pila.toLowerCase().indexOf(flt)>=0;});
   var cnt=document.getElementById('desps-count');
   if(cnt) cnt.textContent=flt?(data.length+' de '+DB.desps.length+' registros'):'';
@@ -2774,11 +2774,14 @@ function rMonTabla(){
     var mon=lastMonData(cod); var hum=lastHumData(cod);
     var um=urgM(p,f); var dm=dsm(p,f); var qm=fm(p);
     var urgDias=um==='venc'?dm-qm:um==='prox'?qm-dm:0;
+    var nv=totalVolteos(cod);
     return '<tr class="dactive" id="mrow-'+cod+'">'
       +'<td><input type="checkbox" class="chk-row" checked onchange="toggleMonCheck('+q(cod)+',this.checked)"></td>'
       +'<td><strong style="color:var(--ms2)">'+cod+'</strong></td>'
+      +'<td>'+dB(p.fecha,td())+'d</td>'
       +'<td style="font-size:10.5px;color:var(--ink3)">'+enm(p)+'</td>'
       +'<td>'+urgLabel(um,urgDias,'M')+'</td>'
+      +'<td style="text-align:right;color:var(--ms2)"><strong>'+nv+'</strong></td>'
       +'<td style="font-size:10.5px;color:var(--ink3)">'+(mon?fmt(mon.fecha):'—')+'</td>'
       +'<td>'+(mon&&mon.prom!=null?'<span class="prom-chip '+tempClass(mon.prom)+'">'+fN(mon.prom,1)+'°F</span>':'—')+'</td>'
       +'<td style="font-size:10.5px;color:var(--ink3)">'+(hum?hum.hum+'/5 ('+fmt(hum.fecha)+')':'—')+'</td>'
