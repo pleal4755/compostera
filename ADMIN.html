@@ -127,7 +127,7 @@ td.hi{background:var(--ms6)}
 .cv{background:var(--sl4);border:1px solid var(--bd);border-radius:var(--r);padding:8px 11px;font-size:12px;color:var(--ink3)}
 .cv strong{color:var(--ink)}
 .fa{display:flex;justify-content:flex-end;gap:6px;margin-top:13px;padding-top:11px;border-top:1px solid var(--bd)}
-.ttrio{display:grid;grid-template-columns:1fr 1fr 1fr 80px;gap:8px;align-items:end}
+.ttrio{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 80px;gap:8px;align-items:end}
 .tres{background:var(--ms6);border:1px solid var(--ms5);border-radius:var(--r);padding:8px;text-align:center}
 .trv{font-size:18px;color:var(--ms)}.trl{font-size:10px;color:var(--ink3);margin-top:1px}
 .tw2{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:5px;z-index:100}
@@ -300,6 +300,39 @@ td.hi{background:var(--ms6)}
   display:flex;align-items:center;gap:6px}
 .dash-sep i{color:var(--am);font-size:12px}
 
+/* ── DASHBOARD EJECUTIVO ────────────────────────────────────── */
+.dash-secttl{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;margin:4px 0 8px;display:flex;align-items:center;gap:6px;font-weight:600}
+.dash-secttl i{color:var(--ms2);font-size:14px}
+.dash-secttl .wk{margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink4);font-style:italic}
+.dgrid{display:grid;gap:10px;margin-bottom:16px}
+.dgrid.g4{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.dgrid.g3{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+/* tarjeta de etapa del inventario */
+.stage-card{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:13px 15px;border-left:4px solid var(--ink4)}
+.stage-card .sc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.stage-card .sc-nm{font-size:11px;color:var(--ink3);font-weight:600}
+.stage-card .sc-pilas{font-size:10px;color:var(--ink4);background:var(--cr2);border-radius:10px;padding:1px 8px}
+.stage-card .sc-tm{font-size:22px;color:var(--ink);line-height:1}
+.stage-card .sc-tm .u{font-size:11px;color:var(--ink4)}
+/* tarjeta de costo */
+.cost-card{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:13px 15px}
+.cost-card .cc-l{font-size:10.5px;color:var(--ink3);margin-bottom:5px;display:flex;align-items:center;gap:4px}
+.cost-card .cc-l i{font-size:13px;color:var(--ms2)}
+.cost-card .cc-v{font-size:23px;color:var(--ink);line-height:1}
+.cost-card .cc-v .u{font-size:11px;color:var(--ink4)}
+.cost-card .cc-sub{font-size:10px;color:var(--ink4);margin-top:5px}
+.cost-card.accent{border-color:var(--ms3);background:var(--ms6)}.cost-card.accent .cc-v{color:var(--ms)}
+/* barra de cumplimiento */
+.compl-card{background:#fff;border:1px solid var(--bd);border-radius:var(--rl);padding:13px 15px}
+.compl-card .cm-l{font-size:10.5px;color:var(--ink3);margin-bottom:7px;display:flex;align-items:center;gap:4px}
+.compl-card .cm-l i{font-size:13px;color:var(--ms2)}
+.compl-bar{height:9px;border-radius:5px;background:var(--cr3);overflow:hidden;margin:7px 0 5px}
+.compl-bar-fill{height:100%;border-radius:5px;background:var(--ms3);transition:width .3s}
+.compl-bar-fill.warn{background:var(--am2)}.compl-bar-fill.dn{background:var(--rd2)}
+.compl-nums{display:flex;justify-content:space-between;font-size:11px;color:var(--ink3)}
+.compl-nums strong{color:var(--ink)}
+.compl-pct{font-size:23px;color:var(--ink);line-height:1}
+
 /* ── BATCH TRASLADO A MONTÍCULO ─────────────────────────────── */
 .modal-wide{width:820px;max-width:96%}
 .batch-layout{display:grid;grid-template-columns:260px 1fr;gap:0;min-height:420px;overflow:hidden}
@@ -335,6 +368,7 @@ td.hi{background:var(--ms6)}
       <div class="ni" onclick="nav('alert')"><i class="ti ti-bell"></i> Alertas <span class="nbg" id="nbg" style="display:none"></span></div>
       <div class="ni" onclick="nav('planif-lab')"><i class="ti ti-tractor"></i> Plan. Labores</div>
       <div class="ni" onclick="nav('planif-mon')"><i class="ti ti-thermometer"></i> Plan. Monitoreo</div>
+      <div class="ni" onclick="nav('orden-campo')"><i class="ti ti-route"></i> Orden de campo</div>
       <div class="ni" onclick="nav('ejecucion')"><i class="ti ti-clipboard-check"></i> Ejecución</div>
       <div class="ni" onclick="nav('solvita')"><i class="ti ti-flask"></i> SOLVITA</div>
       <div class="ni" onclick="nav('monts')"><i class="ti ti-building-warehouse"></i> Montículos</div>
@@ -366,7 +400,22 @@ td.hi{background:var(--ms6)}
   </div>
   <div class="ct">
     <div class="sc on" id="sc-dash">
+      <!-- KPIs rápidos -->
       <div class="kr" id="kr"></div>
+
+      <!-- BLOQUE 1 — Estado del inventario por etapa -->
+      <div class="dash-secttl"><i class="ti ti-stack-2"></i> Estado del inventario <span class="wk" id="dash-inv-sub"></span></div>
+      <div class="dgrid g4" id="dash-stages"></div>
+
+      <!-- BLOQUE 2 — Costo por TM -->
+      <div class="dash-secttl"><i class="ti ti-currency-dollar"></i> Costo del producto</div>
+      <div class="dgrid g4" id="dash-costos"></div>
+
+      <!-- BLOQUE 3 — Cumplimiento semanal -->
+      <div class="dash-secttl"><i class="ti ti-calendar-check"></i> Cumplimiento de la semana <span class="wk" id="dash-wk-rango"></span></div>
+      <div class="dgrid g3" id="dash-cumpl"></div>
+
+      <!-- Tabla detallada de pilas -->
       <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-stack-2"></i> Pilas en proceso</div></div>
         <div class="tw"><table><thead><tr><th>Código</th><th>Edad</th><th>TM frescas</th><th>TM red. base</th><th class="hi">TM disponibles</th><th class="hi">TM finalizadas</th><th>Últ. temperatura</th><th>Fecha últ. temp.</th><th>Fecha últ. volteo</th><th>Volteos totales</th><th>Estado</th><th>Movimientos</th><th>Costo total</th><th class="hi">$/TM disp.</th></tr></thead><tbody id="dash-tb"></tbody></table></div>
       </div>
@@ -485,8 +534,8 @@ td.hi{background:var(--ms6)}
                   <th style="width:28px"></th>
                   <th>Pila</th><th>Etapa</th><th>Urgencia</th>
                   <th>Últ. mon.</th><th>Últ. temp.</th><th>Últ. hum.</th><th>Operario</th>
-                  <th class="dhi">T1 °F</th><th class="dhi">T2 °F</th><th class="dhi">T3 °F</th><th class="dhi">Prom.</th>
-                  <th>Humedad %</th><th>Estado físico</th>
+                  <th class="dhi">T1 °F</th><th class="dhi">T2 °F</th><th class="dhi">T3 °F</th><th class="dhi">T4 °F</th><th class="dhi">Prom.</th>
+                  <th>Humedad 1-5</th><th>Estado 1-5</th>
                 </tr>
               </thead>
               <tbody id="mon-tbody"></tbody>
@@ -503,6 +552,21 @@ td.hi{background:var(--ms6)}
         </div>
 
       </div>
+    </div>
+
+    <!-- ORDEN DE CAMPO — secuencia física del recorrido -->
+    <div class="sc" id="sc-orden-campo">
+      <div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Defina el orden en que están físicamente las pilas en el campo. Los planes de volteo y monitoreo saldrán en este orden, para que el operario haga el recorrido sin retroceder. Actualícelo cuando cambie la disposición (típicamente una vez por semana).</div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn pr" onclick="guardarOrdenCampo()"><i class="ti ti-check"></i> Guardar orden</button>
+        <button class="btn" onclick="autoNumerarOrden()" title="Asigna 10, 20, 30... en el orden actual de la lista"><i class="ti ti-list-numbers"></i> Renumerar 10 en 10</button>
+        <button class="btn" onclick="rOrdenCampo()"><i class="ti ti-refresh"></i> Descartar cambios</button>
+        <span style="font-size:11px;color:var(--ink4);font-style:italic">Sugerencia: numere 10, 20, 30… así puede intercalar una pila nueva (ej. 25) sin renumerar todo.</span>
+      </div>
+      <div class="card"><div class="tw"><table>
+        <thead><tr><th style="width:90px">Orden</th><th>Código</th><th>Edad</th><th>Etapa</th><th>Estado</th><th>Últ. volteo</th><th>Últ. temp.</th></tr></thead>
+        <tbody id="orden-tb"></tbody>
+      </table></div></div>
     </div>
 
     <!-- SOLVITA -->
@@ -563,7 +627,7 @@ td.hi{background:var(--ms6)}
       </tr></thead><tbody id="pilas-tb"></tbody></table></div></div>
     </div>
     <div class="sc" id="sc-acts"><div style="display:flex;gap:7px;margin-bottom:10px;align-items:center"><input type="text" id="flt-acts-pila" placeholder="Filtrar por código de pila..." oninput="rActs()" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:#fff;color:var(--ink);width:240px"><button class="btn sm" onclick="document.getElementById('flt-acts-pila').value='';rActs()"><i class="ti ti-x"></i> Limpiar</button><span id="acts-count" style="font-size:11px;color:var(--ink4);font-style:italic"></span></div><div class="card"><div class="tw"><table><thead><tr><th>#</th><th>Pila</th><th>Fecha</th><th>Labor</th><th>Equipo</th><th>Horas</th><th>$/h</th><th>Costo</th><th>Operador</th><th></th></tr></thead><tbody id="acts-tb"></tbody></table></div></div></div>
-    <div class="sc" id="sc-mon"><div style="display:flex;gap:7px;margin-bottom:10px;align-items:center"><input type="text" id="flt-mon-pila" placeholder="Filtrar por código de pila..." oninput="rMons()" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:#fff;color:var(--ink);width:240px"><button class="btn sm" onclick="document.getElementById('flt-mon-pila').value='';rMons()"><i class="ti ti-x"></i> Limpiar</button><span id="mon-reg-count" style="font-size:11px;color:var(--ink4);font-style:italic"></span></div><div class="card"><div class="tw"><table><thead><tr><th>#</th><th>Pila</th><th>Fecha</th><th>T1 °F</th><th>T2 °F</th><th>T3 °F</th><th>Prom °F</th><th>Alerta</th><th>Humedad</th><th>Estado físico</th><th></th></tr></thead><tbody id="mon-tb"></tbody></table></div></div></div>
+    <div class="sc" id="sc-mon"><div style="display:flex;gap:7px;margin-bottom:10px;align-items:center"><input type="text" id="flt-mon-pila" placeholder="Filtrar por código de pila..." oninput="rMons()" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:#fff;color:var(--ink);width:240px"><button class="btn sm" onclick="document.getElementById('flt-mon-pila').value='';rMons()"><i class="ti ti-x"></i> Limpiar</button><span id="mon-reg-count" style="font-size:11px;color:var(--ink4);font-style:italic"></span></div><div class="card"><div class="tw"><table><thead><tr><th>#</th><th>Pila</th><th>Fecha</th><th>T1 °F</th><th>T2 °F</th><th>T3 °F</th><th>T4 °F</th><th>Prom °F</th><th>Alerta</th><th>Humedad</th><th>Estado físico</th><th></th></tr></thead><tbody id="mon-tb"></tbody></table></div></div></div>
     <div class="sc" id="sc-movs"><div style="display:flex;gap:7px;margin-bottom:10px;align-items:center"><input type="text" id="flt-movs-pila" placeholder="Filtrar por código (origen o destino)..." oninput="rMovs()" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:#fff;color:var(--ink);width:280px"><button class="btn sm" onclick="document.getElementById('flt-movs-pila').value='';rMovs()"><i class="ti ti-x"></i> Limpiar</button><span id="movs-count" style="font-size:11px;color:var(--ink4);font-style:italic"></span></div><div class="card"><div class="tw"><table><thead><tr><th>#</th><th>Fecha</th><th>Tipo</th><th>Origen</th><th>Destino</th><th>TM</th><th>%</th><th>Costo cedido</th><th>Obs.</th><th></th></tr></thead><tbody id="movs-tb"></tbody></table></div></div></div>
     <div class="sc" id="sc-desps"><div style="display:flex;gap:7px;margin-bottom:10px;align-items:center"><input type="text" id="flt-desps-pila" placeholder="Filtrar por código de pila..." oninput="rDesps()" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:#fff;color:var(--ink);width:240px"><button class="btn sm" onclick="document.getElementById('flt-desps-pila').value='';rDesps()"><i class="ti ti-x"></i> Limpiar</button><span id="desps-count" style="font-size:11px;color:var(--ink4);font-style:italic"></span></div><div class="card"><div class="tw"><table><thead><tr><th>#</th><th>Fecha</th><th>Pila</th><th>Tipo</th><th>TM</th><th>Destino</th><th>$/TM venta</th><th>Ingreso</th><th>Costo/TM</th><th>Margen/TM</th><th></th></tr></thead><tbody id="desps-tb"></tbody></table></div></div></div>
     <div class="sc" id="sc-ejecucion">
@@ -589,7 +653,7 @@ td.hi{background:var(--ms6)}
         <div class="cfc"><h4><i class="ti ti-leaf"></i> Materia prima</h4><div class="cfr2"><span>Cachaza ($/TM)</span><input type="number" id="c-cach" step="0.01"></div><div class="cfr2"><span>Trash ($/TM)</span><input type="number" id="c-trash" step="0.01"></div></div>
         <div class="cfc"><h4><i class="ti ti-arrows-down-up"></i> Reducción</h4><div class="cfr2"><span>Factor reducción</span><input type="number" id="c-red" step="0.001" min="0.1" max="1"></div><div style="font-size:10px;color:var(--ink4);margin-top:6px;font-style:italic">0.333 = 1/3 del volumen fresco</div></div>
         <div class="cfc"><h4><i class="ti ti-temperature"></i> Temperatura (°F)</h4><div class="cfr2"><span>Mínima activa</span><input type="number" id="c-tmin" step="1"></div><div class="cfr2"><span>Máxima activa</span><input type="number" id="c-tmax" step="1"></div></div>
-        <div class="cfc"><h4><i class="ti ti-drop"></i> Humedad (%)</h4><div class="cfr2"><span>Mínima</span><input type="number" id="c-hmin" step="1"></div><div class="cfr2"><span>Máxima</span><input type="number" id="c-hmax" step="1"></div></div>
+        <div class="cfc"><h4><i class="ti ti-drop"></i> Humedad (escala 1–5)</h4><div class="cfr2"><span>Mínima</span><input type="number" id="c-hmin" step="1" min="1" max="5"></div><div class="cfr2"><span>Máxima</span><input type="number" id="c-hmax" step="1" min="1" max="5"></div></div>
         <div class="cfc"><h4><i class="ti ti-flask"></i> SOLVITA</h4><div class="cfr2"><span>Días para análisis</span><input type="number" id="c-solv" step="1"></div><div class="cfr2"><span>Días anticipación</span><input type="number" id="c-saviso" step="1"></div></div>
         <div class="cfc"><h4><i class="ti ti-calendar-repeat"></i> Frecuencias (días)</h4>
           <div class="cfr2"><span>Volteo joven (0-30d)</span><input type="number" id="c-fv1" step="1" min="1"></div>
@@ -712,7 +776,7 @@ let   GS_LISTO = false;   // se vuelve true cuando ya cargó de la nube
 const GS_NUM = {
   pilas:['ca','tr','tmc'],
   acts :['horas','ch','cost'],
-  mons :['t1','t2','t3','prom','hum'],
+  mons :['t1','t2','t3','t4','prom','hum'],
   movs :['tm','dist','ct','costEq','costCamion','t1','t2','t3','prom','hum','pct'],
   desps:['tm','precio'],
   tareas:['horas','horoIni','horoFin'],
@@ -857,13 +921,17 @@ function recalcularCostosConProrrateo(){
   }
   function norm(s){ return String(s||'').trim().toLowerCase(); }
 
-  // Agrupar actividades por (operario|fecha|equipo)
+  // Agrupar actividades por (operario|fecha|equipo).
+  // El operario es opcional: si falta, se agrupa con marcador "(sin op)" y
+  // recibirá costo directo (horas × tarifa), ya que sin operario no puede
+  // haber turno cerrado que lo prorratee. Esto cubre cargas históricas.
   var grupos = {};
   DB.acts.forEach(function(a){
-    if(!a.op || !a.fecha || !a.equipo || !(parseFloat(a.horas)>0)) return;
+    if(!a.fecha || !a.equipo || !(parseFloat(a.horas)>0)) return;
     var fechaN = normFecha(a.fecha);
-    var clave = norm(a.op)+'|'+fechaN+'|'+norm(a.equipo);
-    if(!grupos[clave]) grupos[clave]={acts:[], horasAsign:0, equipo:a.equipo, fecha:fechaN, op:a.op};
+    var opKey = a.op ? norm(a.op) : '(sin op)';
+    var clave = opKey+'|'+fechaN+'|'+norm(a.equipo);
+    if(!grupos[clave]) grupos[clave]={acts:[], horasAsign:0, equipo:a.equipo, fecha:fechaN, op:a.op||''};
     grupos[clave].acts.push(a);
     grupos[clave].horasAsign += parseFloat(a.horas)||0;
   });
@@ -873,27 +941,40 @@ function recalcularCostosConProrrateo(){
     console.log('  Turno:', t.operario, '|', normFecha(t.fecha), '|', t.equipo, '| estado:', t.estado, '| horos:', t.horoIni, '->', t.horoFin);
   });
 
-  // Para cada grupo, buscar turno cerrado
+  // Para cada grupo, calcular costo. HÍBRIDO:
+  //   - Si hay turno cerrado válido → prorratea (reparte horas muertas del día).
+  //   - Si NO hay turno → costo directo = horas × tarifa del equipo (factor=1).
   Object.keys(grupos).forEach(function(clave){
     var g = grupos[clave];
+    var eq = (DB.eqs||[]).find(function(e){return norm(e.n)===norm(g.equipo);});
+    if(!eq){ console.log('[PRORRATEO] ⚠️ Equipo no encontrado en catálogo:', g.equipo); return; }
+    var ch = eqc(eq.id, g.fecha);
+    if(g.horasAsign<=0) return;
+
     var turno = (DB.turnos||[]).find(function(t){
       return norm(t.operario)===norm(g.op)
           && normFecha(t.fecha)===g.fecha
           && norm(t.equipo)===norm(g.equipo)
           && String(t.estado).toLowerCase()==='cerrado';
     });
-    if(!turno){ console.log('[PRORRATEO] ⏳ Grupo sin turno cerrado:', clave); return; }
-    var horoIni = parseFloat(turno.horoIni); var horoFin = parseFloat(turno.horoFin);
-    if(isNaN(horoIni)||isNaN(horoFin)||horoFin<=horoIni){
-      console.log('[PRORRATEO] ⚠️ Turno con horómetros inválidos:', horoIni, horoFin); return;
+
+    var factor, modo;
+    if(turno){
+      var horoIni = parseFloat(turno.horoIni); var horoFin = parseFloat(turno.horoFin);
+      if(!isNaN(horoIni) && !isNaN(horoFin) && horoFin>horoIni){
+        // Prorrateo: reparte el total de horas del día entre las horas asignadas
+        factor = (horoFin - horoIni) / g.horasAsign;
+        modo = 'prorrateo (turno cerrado)';
+      } else {
+        // Turno con horómetros inválidos → cae a directo
+        factor = 1; modo = 'directo (turno inválido)';
+      }
+    } else {
+      // Sin turno → costo directo horas × tarifa
+      factor = 1; modo = 'directo (sin turno)';
     }
-    var totalDia = horoFin - horoIni;
-    if(g.horasAsign<=0) return;
-    var factor = totalDia / g.horasAsign;
-    var eq = (DB.eqs||[]).find(function(e){return norm(e.n)===norm(g.equipo);});
-    if(!eq){ console.log('[PRORRATEO] ⚠️ Equipo no encontrado en catálogo:', g.equipo); return; }
-    var ch = eqc(eq.id, g.fecha);
-    console.log('[PRORRATEO] ✅', clave, '| totalDía:', totalDia, '| asignadas:', g.horasAsign, '| factor:', factor.toFixed(3), '| $/h:', ch);
+
+    console.log('[PRORRATEO] ✅', clave, '|', modo, '| asignadas:', g.horasAsign, '| factor:', factor.toFixed(3), '| $/h:', ch);
     g.acts.forEach(function(a){
       var horasFact = (parseFloat(a.horas)||0) * factor;
       a.eqId = eq.id;
@@ -906,7 +987,7 @@ function recalcularCostosConProrrateo(){
 
 // ════════════════════════════════════════════════════════════════════
 
-const DC={cach:85,trash:15,red:0.333,tmin:113,tmax:149,hmin:50,hmax:65,solv:90,saviso:7,fv:[5,7,10,14],fm:[3,5,7,10]};
+const DC={cach:85,trash:15,red:0.333,tmin:113,tmax:149,hmin:2,hmax:4,solv:90,saviso:7,fv:[5,7,10,14],fm:[3,5,7,10]};
 const DEQ=[{id:'e1',n:'Cargador Frontal',c:45,h:[{f:'2026-01-01',c:45}]},{id:'e2',n:'Tractor + implemento',c:30,h:[{f:'2026-01-01',c:30}]},{id:'e3',n:'Retroexcavadora',c:55,h:[{f:'2026-01-01',c:55}]}];
 const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación'},{id:'l2',n:'Volteo',cat:'Volteo'},{id:'l3',n:'Riego + Volteo',cat:'Volteo'},{id:'l4',n:'Riego',cat:'Riego'},{id:'l5',n:'Traslado',cat:'Movimiento'},{id:'l6',n:'Inspección general',cat:'Monitoreo'},{id:'l7',n:'Monitoreo temperatura',cat:'Monitoreo'},{id:'l8',n:'Despacho parcial',cat:'Despacho'},{id:'l9',n:'Despacho total',cat:'Despacho'},{id:'l10',n:'Análisis SOLVITA',cat:'Control de calidad'}];
 const ESTADOS=['Activa','En Maduración','SOLVITA Pendiente','Finalizada'];
@@ -976,7 +1057,22 @@ function ecol(p){return EC[eidx(p)];}
 function enm(p){return['Joven','Media','Maduración','Enfriamiento'][eidx(p)];}
 function fv(p){return p.fvc||((DB.cfg.fv||DC.fv)[eidx(p)]||7);}
 function fm(p){return p.fmc||((DB.cfg.fm||DC.fm)[eidx(p)]||5);}
-function eqc(id,f){const eq=DB.eqs.find(e=>e.id===id);if(!eq)return 0;const h=[...eq.h].sort((a,b)=>b.f.localeCompare(a.f));const r=h.find(x=>x.f<=f);return r?r.c:h[h.length-1].c;}
+function eqc(id,f){
+  const eq=DB.eqs.find(e=>e.id===id);
+  if(!eq||!eq.h||!eq.h.length) return 0;
+  // Historial ordenado de más reciente a más antiguo
+  const h=[...eq.h].sort((a,b)=>b.f.localeCompare(a.f));
+  // Tarifa vigente en la fecha f: la más reciente con fecha <= f
+  const r=h.find(x=>x.f<=f);
+  if(r && r.c>0) return r.c;
+  // Si la vigente es 0 (o la actividad es anterior a toda tarifa), usar como
+  // respaldo la tarifa con valor (>0) más antigua. Esto cubre cargas históricas
+  // donde la tarifa real se registró con fecha posterior al histórico.
+  const conValor=h.filter(x=>x.c>0);
+  if(conValor.length) return conValor[conValor.length-1].c; // la más antigua con valor
+  // Si no hay ninguna tarifa con valor, devolver la vigente (probablemente 0)
+  return r ? r.c : h[h.length-1].c;
+}
 
 function tmF(p){return(p.ca||0)+(p.tr||0);}
 function tmRB(p){return p.tmc!=null?p.tmc:tmF(p)*(DB.cfg.red||0.333);}
@@ -990,23 +1086,55 @@ function sinS(p){return tmD(p)<=0.001&&tmDe(p.cod)>0;}
 function cMP(p){return((p.ca||0)*DB.cfg.cach)+((p.tr||0)*DB.cfg.trash);}
 function cMq(c){return DB.acts.filter(a=>a.pila===c).reduce((s,a)=>s+(a.cost||0),0);}
 function cRec(c){return DB.movs.filter(m=>m.dest===c).reduce((s,m)=>s+(m.ct||0),0);}
-function cCed(c){return DB.movs.filter(m=>m.orig===c).reduce((s,m)=>s+(m.ct||0),0);}
+// Costo BRUTO de la pila: materia prima + labores propias + costos recibidos.
+// Es la base sobre la que se calcula cuánto costo cede al trasladar.
+function cBruto(p){return cMP(p)+cMq(p.cod)+cRec(p.cod);}
+// Costo cedido dinámico de UN movimiento de salida (orig=pila).
+// Reutilizable por la pila (cCed) y por el montículo destino (montCostoRec),
+// garantizando que lo que sale de la pila = lo que entra al montículo.
+function ctMov(m){
+  if(m.pct==null || isNaN(m.pct)) return (m.ct||0); // dato viejo sin pct
+  var p=DB.pilas.find(function(x){return x.cod===m.orig;});
+  if(!p) return (m.ct||0); // origen no es pila (ej. montículo→pila): usar ct guardado
+  var bruto=cMP(p)+cMq(m.orig)+cRec(m.orig);
+  return bruto*m.pct;
+}
+// Costo CEDIDO dinámico: para cada traslado saliente, se cede el porcentaje
+// (pct) de TM trasladado aplicado al costo bruto ACTUAL de la pila. Así, si
+// los costos cambian después del traslado (ej. corrección de tarifa), el
+// cedido se recalcula solo y la proporcionalidad costo/TM se mantiene.
+// Esto reemplaza el 'ct' congelado que se guardaba en el momento del traslado.
+function cCed(c){
+  return DB.movs.filter(m=>m.orig===c).reduce(function(s,m){ return s + ctMov(m); },0);
+}
 function cLabNeto(p){return cMq(p.cod)+cRec(p.cod)-cCed(p.cod);}
-function cT(p){return cMP(p)+cLabNeto(p);}
+// Fracción del costo que QUEDA en la pila (no cedida). Entre 0 y 1.
+function fracEnPila(p){
+  var bruto=cMP(p)+cMq(p.cod)+cRec(p.cod);
+  if(bruto<=0) return 1;
+  return Math.max(0, Math.min(1, cT(p)/bruto));
+}
+// Costo de labores (propias+recibidas) que queda proporcionalmente en la pila.
+// Nunca negativo: escala las labores por la fracción no cedida.
+function cLabEnPila(p){
+  return (cMq(p.cod)+cRec(p.cod)) * fracEnPila(p);
+}
+function cT(p){return cMP(p)+cMq(p.cod)+cRec(p.cod)-cCed(p.cod);}
 function ctm(p){const t=tmD(p);return t>0?cT(p)/t:null;}
 
 function cTip(p){
-  const mp=cMP(p),mq=cMq(p.cod),rc=cRec(p.cod),cd=cCed(p.cod),labN=cLabNeto(p),tot=cT(p);
+  const mp=cMP(p),mq=cMq(p.cod),rc=cRec(p.cod),cd=cCed(p.cod),tot=cT(p);
   if(rc===0&&cd===0) return '<div class="costo-wrap">'+fM(tot)+'</div>';
+  const bruto=mp+mq+rc;
   return '<div class="costo-wrap">'+fM(tot)
     +'<span class="costo-icon" title="Ver desglose">i</span>'
     +'<div class="costo-tip">'
     +'<div class="ct-row"><span>Materia prima</span><span>'+fM(mp)+'</span></div>'
     +'<div class="ct-row"><span>Labores propias</span><span>'+fM(mq)+'</span></div>'
     +(rc>0?'<div class="ct-row"><span class="ct-pos">+ Costos recibidos</span><span class="ct-pos">'+fM(rc)+'</span></div>':'')
-    +(cd>0?'<div class="ct-row"><span class="ct-neg">− Costos cedidos</span><span class="ct-neg">−'+fM(cd)+'</span></div>':'')
-    +'<div class="ct-row"><span>Labores neto</span><span>'+fM(labN)+'</span></div>'
-    +'<div class="ct-row"><span>Total</span><span>'+fM(tot)+'</span></div>'
+    +'<div class="ct-row" style="border-top:1px solid var(--bd);padding-top:3px"><span>Costo acumulado</span><span>'+fM(bruto)+'</span></div>'
+    +(cd>0?'<div class="ct-row"><span class="ct-neg">− Cedido a montículo/pila</span><span class="ct-neg">−'+fM(cd)+'</span></div>':'')
+    +'<div class="ct-row"><span><strong>Total en la pila</strong></span><span><strong>'+fM(tot)+'</strong></span></div>'
     +'</div></div>';
 }
 
@@ -1063,8 +1191,8 @@ function als(){
       if(lmm.prom>c.tmax) push('danger','Temp. alta: '+fN(lmm.prom,1)+'°F');
     }
     if(lmm&&lmm.hum){
-      if(lmm.hum<c.hmin) push('warn','Humedad baja: '+lmm.hum+'%');
-      if(lmm.hum>c.hmax) push('warn','Humedad alta: '+lmm.hum+'%');
+      if(lmm.hum<c.hmin) push('warn','Humedad baja: '+lmm.hum+'/5');
+      if(lmm.hum>c.hmax) push('warn','Humedad alta: '+lmm.hum+'/5');
     }
     var edad=dB(p.fecha,td()),ds=c.solv-edad;
     if(ds<=c.saviso&&ds>=0) push('info','SOLVITA en '+ds+' días');
@@ -1097,15 +1225,15 @@ function nav(sec){
   document.querySelectorAll('.sc').forEach(e=>e.classList.remove('on'));
   const ni=document.querySelector('.ni[onclick="nav(\''+sec+'\')"]');if(ni)ni.classList.add('on');
   const si=document.getElementById('sc-'+sec);if(si)si.classList.add('on');
-  const T={dash:'Dashboard',alert:'Alertas','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',cfg:'Configuración'};
-  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',cfg:'Costos y parámetros'};
+  const T={dash:'Dashboard',alert:'Alertas','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',cfg:'Configuración'};
+  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',cfg:'Costos y parámetros'};
   document.getElementById('ptit').textContent=T[sec]||sec;
   document.getElementById('psub').textContent=S[sec]||'';
   const hf=['pilas','acts','mon','movs','desps'].includes(sec);
   document.getElementById('bnew').style.display=hf?'':'none';
   const L={pilas:'Nueva pila',acts:'Nueva actividad',mon:'Nuevo monitoreo',movs:'Nuevo traslado',desps:'Nuevo despacho'};
   document.getElementById('blbl').textContent=L[sec]||'Nuevo';
-  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();
+  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='orden-campo')rOrdenCampo();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();
   mpo=null;render();
 }
 
@@ -1128,22 +1256,137 @@ function render(){
 }
 function updB(){const n=als().length;const b=document.getElementById('nbg');if(n){b.style.display='';b.textContent=n;}else b.style.display='none';}
 
+// Helpers de semana (lunes a domingo de la semana actual)
+function inicioSemana(){
+  var d=new Date(); var day=d.getDay(); // 0=domingo
+  var diff=(day===0?-6:1-day); // mover a lunes
+  d.setDate(d.getDate()+diff); d.setHours(0,0,0,0);
+  return d.toISOString().split('T')[0];
+}
+function finSemana(){
+  var d=new Date(inicioSemana()+'T12:00:00'); d.setDate(d.getDate()+6);
+  return d.toISOString().split('T')[0];
+}
+function enRango(f,desde,hasta){
+  if(!f) return false;
+  var s=String(f).substring(0,10);
+  return s>=desde && s<=hasta;
+}
+
 function rDash(){
   const ep=pep(),act=ep.filter(p=>p.estado!=='Finalizada'),fin=ep.filter(p=>p.estado==='Finalizada');
   const tFr=act.reduce((s,p)=>s+tmF(p),0),tDi=ep.reduce((s,p)=>s+tmD(p),0),tFi=fin.reduce((s,p)=>s+tmD(p),0);
-  const ctTmp=ep.reduce((s,p)=>s+cT(p),0),al=als(),dn=al.filter(a=>a.tipo==='danger').length;
+  const tMont=DB.monts.reduce(function(s,m){return s+montTmD(m.id);},0);
+  const al=als(),dn=al.filter(a=>a.tipo==='danger').length;
+
+  // ── KPIs rápidos (fila superior compacta) ──
   document.getElementById('kr').innerHTML=
     '<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas activas</div><div class="kv">'+act.length+'</div></div>'
-    +'<div class="kpi pu"><div class="kl"><i class="ti ti-circle-check"></i> Finalizadas</div><div class="kv">'+fin.length+'</div></div>'
-    +'<div class="kpi"><div class="kl"><i class="ti ti-arrows-down-up"></i> TM frescas</div><div class="kv">'+fN(tFr,1)+' <span class="ku">TM</span></div></div>'
     +'<div class="kpi ok"><div class="kl"><i class="ti ti-stack-3"></i> TM disponibles</div><div class="kv">'+fN(tDi,1)+' <span class="ku">TM</span></div></div>'
-    +'<div class="kpi pu"><div class="kl"><i class="ti ti-package"></i> TM finalizadas</div><div class="kv">'+fN(tFi,1)+' <span class="ku">TM</span></div></div>'
-    +'<div class="kpi"><div class="kl"><i class="ti ti-currency-dollar"></i> Costo temporada</div><div class="kv" style="font-size:15px">'+fM(ctTmp)+'</div></div>'
-    +'<div class="kpi '+(dn?'dn':al.length?'wn':'ok')+'"><div class="kl"><i class="ti ti-bell"></i> Alertas</div><div class="kv">'+al.length+'</div></div>'
-    +'<div class="kpi wn"><div class="kl"><i class="ti ti-building-warehouse"></i> TM en montículos</div><div class="kv">'+fN(DB.monts.reduce(function(s,m){return s+montTmD(m.id);},0),1)+' <span class="ku">TM</span></div></div>';
+    +'<div class="kpi pu"><div class="kl"><i class="ti ti-package"></i> TM producto listo</div><div class="kv">'+fN(tFi+tMont,1)+' <span class="ku">TM</span></div></div>'
+    +'<div class="kpi '+(dn?'dn':al.length?'wn':'ok')+'"><div class="kl"><i class="ti ti-bell"></i> Alertas</div><div class="kv">'+al.length+'</div></div>';
+
+  // ════════ BLOQUE 1 — Inventario por etapa ════════
+  // Agrupar TM disponibles de pilas en proceso por etapa de madurez
+  var etapas=[
+    {nm:'Joven',sub:'0–30 d',col:EC[0],tm:0,n:0},
+    {nm:'Media',sub:'31–60 d',col:EC[1],tm:0,n:0},
+    {nm:'Maduración',sub:'61–90 d',col:EC[2],tm:0,n:0},
+    {nm:'Enfriamiento',sub:'90+ d',col:EC[3],tm:0,n:0}
+  ];
+  act.forEach(function(p){
+    var i=eidx(p); etapas[i].tm+=tmD(p); etapas[i].n++;
+  });
+  document.getElementById('dash-inv-sub').textContent=fN(tDi,1)+' TM en proceso · '+fN(tFi+tMont,1)+' TM listas';
+  document.getElementById('dash-stages').innerHTML=etapas.map(function(e){
+    return '<div class="stage-card" style="border-left-color:'+e.col+'">'
+      +'<div class="sc-top"><span class="sc-nm">'+e.nm+' <span style="color:var(--ink4);font-weight:400">· '+e.sub+'</span></span>'
+        +'<span class="sc-pilas">'+e.n+' pila'+(e.n!==1?'s':'')+'</span></div>'
+      +'<div class="sc-tm">'+fN(e.tm,1)+' <span class="u">TM</span></div>'
+      +'</div>';
+  }).join('')
+  // tarjeta extra: producto terminado (montículos + finalizadas)
+  +'<div class="stage-card" style="border-left-color:var(--am)">'
+    +'<div class="sc-top"><span class="sc-nm">Producto terminado</span>'
+      +'<span class="sc-pilas">'+DB.monts.length+' bodegas</span></div>'
+    +'<div class="sc-tm" style="color:var(--am)">'+fN(tFi+tMont,1)+' <span class="u">TM</span></div>'
+    +'</div>';
+
+  // ════════ BLOQUE 2 — Costo por TM ════════
+  // Costo total acumulado y TM totales para costo ponderado
+  var costoProceso=act.reduce(function(s,p){return s+cT(p);},0);
+  var costoMP=act.reduce(function(s,p){return s+cMP(p);},0);
+  var costoLab=act.reduce(function(s,p){return s+cLabEnPila(p);},0);
+  // Costo ponderado por TM disponible en proceso
+  var ctmProceso= tDi>0 ? costoProceso/tDi : null;
+  // Costo ponderado del producto en montículos
+  var costoMont=DB.monts.reduce(function(s,m){return s+montCostoTotal(m.id);},0);
+  var ctmMont= tMont>0 ? costoMont/tMont : null;
+  var pctMP= costoProceso>0 ? (costoMP/costoProceso*100) : 0;
+
+  document.getElementById('dash-costos').innerHTML=
+    '<div class="cost-card accent"><div class="cc-l"><i class="ti ti-scale"></i> Costo / TM en proceso</div>'
+      +'<div class="cc-v">'+(ctmProceso!=null?fM(ctmProceso):'—')+'</div>'
+      +'<div class="cc-sub">ponderado · '+fN(tDi,1)+' TM disponibles</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-building-warehouse"></i> Costo / TM producto listo</div>'
+      +'<div class="cc-v">'+(ctmMont!=null?fM(ctmMont):'—')+'</div>'
+      +'<div class="cc-sub">en montículos · '+fN(tMont,1)+' TM</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-leaf"></i> Costo materia prima</div>'
+      +'<div class="cc-v" style="font-size:18px">'+fM(costoMP)+'</div>'
+      +'<div class="cc-sub">'+fN(pctMP,0)+'% del costo total en proceso</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-tractor"></i> Costo labores (neto)</div>'
+      +'<div class="cc-v" style="font-size:18px">'+fM(costoLab)+'</div>'
+      +'<div class="cc-sub">'+fN(100-pctMP,0)+'% del costo total en proceso</div></div>';
+
+  // ════════ BLOQUE 3 — Cumplimiento semanal ════════
+  var d0=inicioSemana(),d1=finSemana();
+  document.getElementById('dash-wk-rango').textContent=fmtL(d0)+' — '+fmtL(d1);
+  // Tareas de la semana por tipo
+  var tareas=(DB.tareas||[]).filter(function(t){return enRango(t.fecha,d0,d1);});
+  function resumen(tipo){
+    var arr=tareas.filter(function(t){return t.tipo===tipo;});
+    var total=arr.length;
+    var hechas=arr.filter(function(t){return t.estado==='ejecutada';}).length;
+    var pend=arr.filter(function(t){return t.estado==='pendiente';}).length;
+    // vencidas: pendientes con fecha anterior a hoy
+    var venc=arr.filter(function(t){return t.estado==='pendiente' && String(t.fecha).substring(0,10)<td();}).length;
+    var pct= total>0 ? Math.round(hechas/total*100) : 0;
+    return {total:total,hechas:hechas,pend:pend,venc:venc,pct:pct};
+  }
+  var rv=resumen('volteo'),rm=resumen('monitoreo');
+  function complCard(titulo,icono,r){
+    var barCls=r.pct>=80?'':r.pct>=50?'warn':'dn';
+    return '<div class="compl-card">'
+      +'<div class="cm-l"><i class="ti '+icono+'"></i> '+titulo+'</div>'
+      +'<div style="display:flex;align-items:baseline;gap:8px">'
+        +'<span class="compl-pct">'+r.pct+'%</span>'
+        +'<span style="font-size:11px;color:var(--ink3)"><strong>'+r.hechas+'</strong> de <strong>'+r.total+'</strong> ejecutadas</span></div>'
+      +'<div class="compl-bar"><div class="compl-bar-fill '+barCls+'" style="width:'+r.pct+'%"></div></div>'
+      +'<div class="compl-nums"><span>Pendientes: <strong>'+r.pend+'</strong></span>'
+        +'<span'+(r.venc?' style="color:var(--rd2)"':'')+'>Vencidas: <strong>'+r.venc+'</strong></span></div>'
+      +'</div>';
+  }
+  // tercera tarjeta: resumen combinado de la operación
+  var totalTareas=rv.total+rm.total, totalHechas=rv.hechas+rm.hechas;
+  var pctGlobal= totalTareas>0 ? Math.round(totalHechas/totalTareas*100) : 0;
+  var barClsG=pctGlobal>=80?'':pctGlobal>=50?'warn':'dn';
+  var resumenGlobal='<div class="compl-card" style="border-color:var(--ms3)">'
+    +'<div class="cm-l"><i class="ti ti-checklist"></i> Cumplimiento global</div>'
+    +'<div style="display:flex;align-items:baseline;gap:8px">'
+      +'<span class="compl-pct" style="color:var(--ms)">'+pctGlobal+'%</span>'
+      +'<span style="font-size:11px;color:var(--ink3)"><strong>'+totalHechas+'</strong> de <strong>'+totalTareas+'</strong> tareas</span></div>'
+    +'<div class="compl-bar"><div class="compl-bar-fill '+barClsG+'" style="width:'+pctGlobal+'%"></div></div>'
+    +'<div class="compl-nums"><span>Programadas esta semana</span>'
+      +'<span'+((rv.venc+rm.venc)?' style="color:var(--rd2)"':'')+'>'+(rv.venc+rm.venc)+' vencidas</span></div>'
+    +'</div>';
+  document.getElementById('dash-cumpl').innerHTML=
+    complCard('Volteos','ti-tractor',rv)
+    +complCard('Monitoreos','ti-thermometer',rm)
+    +resumenGlobal;
+
+  // ── Tabla detallada de pilas (igual que antes) ──
   const tb2=document.getElementById('dash-tb');
-  if(!ep.length){tb2.innerHTML='<tr><td colspan="12"><div class="em"><i class="ti ti-stack-2"></i>Sin pilas.</div></td></tr>';return;}
-  // Filas de montículos intercaladas al final de la tabla
+  if(!ep.length){tb2.innerHTML='<tr><td colspan="14"><div class="em"><i class="ti ti-stack-2"></i>Sin pilas.</div></td></tr>';return;}
   var montRows='';
   if(DB.monts&&DB.monts.length){
     montRows='<tr><td colspan="14" class="dash-sep"><i class="ti ti-building-warehouse"></i> Montículos — producto terminado</td></tr>';
@@ -1162,7 +1405,7 @@ function rDash(){
     }).join('')+montRows;
   }
   tb2.innerHTML=ep.map(p=>{
-    const lmm=lm(p.cod),lvv=lv(p.cod),dssvv=lvv?dB(lvv,td()):null;
+    const lmm=lm(p.cod),lvv=lv(p.cod);
     const d=tmD(p),ft=tmFin(p),cm=ctm(p);
     return '<tr>'
       +'<td><strong style="color:var(--ms2)">'+p.cod+'</strong></td>'
@@ -1172,7 +1415,6 @@ function rDash(){
       +'<td class="hi"><strong style="color:'+(d<=0&&tmDe(p.cod)>0?'var(--ink4)':'var(--ms)')+'">'+
         (d<=0&&tmDe(p.cod)>0?'Sin saldo':fN(d,2))+'</strong></td>'
       +'<td class="hi">'+(ft>0?'<strong style="color:var(--pu)">'+fN(ft,2)+'</strong>':'—')+'</td>'
-      +'<td style="text-align:right"><strong style="color:var(--ms2)">'+totalVolteos(p.cod)+'</strong></td>'
       +'<td>'+(lmm&&lmm.prom!=null?tbadge(lmm.prom):'—')+'</td>'
       +'<td style="color:var(--ink3);font-size:11px">'+(lmm?fmt(lmm.fecha):'—')+'</td>'
       +'<td style="color:var(--ink3);font-size:11px">'+(lvv?fmt(lvv):'—')+'</td>'
@@ -1267,7 +1509,7 @@ function rPilas(){
   let rows='';
   data.forEach(function(p){
     const d=tmD(p),ft=tmFin(p),cm=ctm(p),sn=sinS(p);
-    const mp=cMP(p),labN=cLabNeto(p);
+    const mp=cMP(p)*fracEnPila(p),labN=cLabEnPila(p);
     const nMovs=DB.movs.filter(m=>m.orig===p.cod||m.dest===p.cod).length;
     const sd=new Date(p.fecha);sd.setDate(sd.getDate()+(DB.cfg.solv||90));
     const cod=p.cod;
@@ -1288,7 +1530,7 @@ function rPilas(){
       +'<td class="hi">'+(sn?'<span style="color:var(--ink4);font-style:italic">Sin saldo</span>':'<strong style="color:var(--ms)">'+fN(d,2)+'</strong>')+'</td>'
       +'<td class="hi">'+(ft>0?'<strong style="color:var(--pu)">'+fN(ft,2)+'</strong>':'—')+'</td>'
       +'<td>'+fM(mp)+'</td>'
-      +'<td>'+(labN!==0?'<span style="color:'+(labN>=0?'var(--ms2)':'var(--rd2)')+'">'+fM(labN)+'</span>':fM(cMq(cod)))+'</td>'
+      +'<td>'+fM(labN)+'</td>'
       +'<td>'+cTip(p)+'</td>'
       +'<td class="hi">'+(cm?'<strong>'+fM(cm)+'</strong>':'—')+'</td>'
       +'<td style="text-align:right"><strong style="color:var(--ms2)">'+totalVolteos(cod)+'</strong></td>'
@@ -1350,9 +1592,9 @@ function rMons(){
   }
   tb2.innerHTML=data.map(function(m,i){
     var ha=m.hum
-      ?(m.hum<c.hmin?'<span class="badge ba">'+m.hum+'%</span>'
-        :m.hum>c.hmax?'<span class="badge br2">'+m.hum+'%</span>'
-        :'<span class="badge bg">'+m.hum+'%</span>')
+      ?(m.hum<c.hmin?'<span class="badge ba">'+m.hum+'/5</span>'
+        :m.hum>c.hmax?'<span class="badge br2">'+m.hum+'/5</span>'
+        :'<span class="badge bg">'+m.hum+'/5</span>')
       :'—';
     return '<tr><td>'+(i+1)+'</td>'
       +'<td><strong style="color:var(--ms2)">'+m.pila+'</strong></td>'
@@ -1360,6 +1602,7 @@ function rMons(){
       +'<td>'+(m.t1!=null?m.t1+'°F':'—')+'</td>'
       +'<td>'+(m.t2!=null?m.t2+'°F':'—')+'</td>'
       +'<td>'+(m.t3!=null?m.t3+'°F':'—')+'</td>'
+      +'<td>'+(m.t4!=null?m.t4+'°F':'—')+'</td>'
       +'<td><strong>'+(m.prom!=null?fN(m.prom,1)+'°F':'—')+'</strong></td>'
       +'<td>'+tbadge(m.prom)+'</td>'
       +'<td>'+ha+'</td>'
@@ -1438,6 +1681,8 @@ function labO(){return DB.labs.map(function(l){return'<option value="'+l.n+'">'+
 function cAct(){return pep().filter(function(p){return p.estado!=='Finalizada';}).map(function(p){return'<option value="'+p.cod+'">'+p.cod+'</option>';}).join('');}
 function cTods(){return DB.pilas.map(function(p){return'<option value="'+p.cod+'">'+p.cod+' — '+p.estado+'</option>';}).join('');}
 function genCod(){DB.cnt=(DB.cnt||0)+1;gsGuardarCatalogo('cnt',DB.cnt);return new Date().getFullYear()+'-'+String(DB.cnt).padStart(3,'0');}
+// Previsualiza el próximo código autogenerado SIN consumir el contador.
+function peekCod(){return new Date().getFullYear()+'-'+String((DB.cnt||0)+1).padStart(3,'0');}
 
 function openForm(){
   eid=null;
@@ -1451,7 +1696,13 @@ function closeM(e){if(!e||e.target===document.getElementById('mover'))document.g
 
 function fPila(o){
   o=o||{};
+  // En creación, mostramos el código autogenerado (editable). En edición, el código es fijo.
+  var codInicial = eid ? eid : peekCod();
   return'<div class="fg2">'
+    +'<div class="fg full"><label>Código de la pila <span class="req">*</span></label>'
+      +'<input type="text" id="f-cod" value="'+codInicial.replace(/"/g,'&quot;')+'"'+(eid?' disabled style="background:var(--cr2);color:var(--ink3)"':'')+'>'
+      +(eid?'<span class="hint">El código no se puede cambiar una vez creada la pila.</span>':'<span class="hint">Generado automáticamente. Puede reemplazarlo por uno propio (ej. NORTE-01).</span>')
+    +'</div>'
     +'<div class="fg"><label>Fecha formación <span class="req">*</span></label><input type="date" id="f-fecha" value="'+(o.fecha||td())+'" max="'+td()+'"></div>'
     +'<div class="fg"><label>Estado <span class="req">*</span></label><select id="f-est">'+ESTADOS.map(function(e){return'<option '+((o.estado||'Activa')===e?'selected':'')+'>'+e+'</option>';}).join('')+'</select></div>'
     +'<div class="fg"><label>TM cachaza <span class="req">*</span></label><input type="number" id="f-ca" min="0" step="0.1" value="'+(o.ca||'')+'" oninput="pvP()"></div>'
@@ -1476,12 +1727,26 @@ function gPila(){
   var est=document.getElementById('f-est').value;
   if(!fecha||isNaN(ca)||isNaN(tr)){toast('Complete los campos obligatorios','wn');return;}
   if(eid){
+    // Edición: el código no cambia
     var p=DB.pilas.find(function(x){return x.cod===eid;});
-    if(p){p.fecha=fecha;p.ca=ca;p.tr=tr;p.estado=est;p.obs=document.getElementById('f-obs').value;}
+    if(p){
+      p.fecha=fecha;p.ca=ca;p.tr=tr;p.estado=est;p.obs=document.getElementById('f-obs').value;
+      gsEditar('pilas','cod',p.cod,clonReg(p));
+    }
     toast('Pila actualizada');
   } else {
-    DB.pilas.push({cod:genCod(),fecha:fecha,ca:ca,tr:tr,estado:est,tmc:null,obs:document.getElementById('f-obs').value,fvc:null,fmc:null});
-    toast('Pila registrada');
+    // Creación: tomar el código del campo (editable)
+    var codField=document.getElementById('f-cod');
+    var cod=codField?codField.value.trim():'';
+    if(!cod){toast('El código no puede quedar vacío','wn');return;}
+    // Validar que no exista ya una pila o montículo con ese código
+    var existe=DB.pilas.some(function(x){return x.cod===cod;})
+            || (DB.monts||[]).some(function(m){return m.id===cod;});
+    if(existe){toast('Ya existe una pila con el código "'+cod+'". Use otro.','er');return;}
+    // Consumir el contador SOLO si el usuario dejó el autogenerado
+    if(cod===peekCod()){ genCod(); }
+    DB.pilas.push({cod:cod,fecha:fecha,ca:ca,tr:tr,estado:est,tmc:null,obs:document.getElementById('f-obs').value,fvc:null,fmc:null});
+    toast('Pila registrada — '+cod);
   }
   sv();closeM();render();
 }
@@ -1565,10 +1830,11 @@ function fMon(o){
     +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 1</label><input type="number" id="f-t1" step="0.5" min="32" max="250" placeholder="°F" oninput="pvT()"></div>'
     +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 2</label><input type="number" id="f-t2" step="0.5" min="32" max="250" placeholder="°F" oninput="pvT()"></div>'
     +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 3</label><input type="number" id="f-t3" step="0.5" min="32" max="250" placeholder="°F" oninput="pvT()"></div>'
+    +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 4</label><input type="number" id="f-t4" step="0.5" min="32" max="250" placeholder="°F" oninput="pvT()"></div>'
     +'<div class="tres"><div class="trv" id="pv-tmp">—</div><div class="trl">Promedio °F</div></div>'
     +'</div></div>'
-    +'<div class="fg"><label>Humedad (%)</label><input type="number" id="f-hum" step="0.5" min="0" max="100"></div>'
-    +'<div class="fg"><label>Estado físico <span class="req">*</span></label><select id="f-est">'+['Bueno — estructura uniforme','Seco — requiere riego','Húmedo en exceso','Compactado — requiere volteo','Olor a amoniaco','Olor a sulfuro','Costra superficial','Hongos (normal)','Finalización aparente'].map(function(e){return'<option>'+e+'</option>';}).join('')+'</select></div>'
+    +'<div class="fg"><label>Humedad (1–5)</label><input type="number" id="f-hum" step="1" min="1" max="5" placeholder="1=seco · 5=húmedo"></div>'
+    +'<div class="fg"><label>Estado físico (1–5)</label><input type="number" id="f-est" step="1" min="1" max="5" placeholder="código 1–5"></div>'
     +'<div class="fg full"><label>Obs.</label><textarea id="f-obs"></textarea></div>'
     +'</div>'
     +'<div class="fa"><button class="btn" onclick="closeM()">Cancelar</button><button class="btn pr" onclick="gMon()"><i class="ti ti-check"></i> Registrar</button></div>';
@@ -1577,7 +1843,8 @@ function pvT(){
   var t1=parseFloat(document.getElementById('f-t1')?document.getElementById('f-t1').value:'');
   var t2=parseFloat(document.getElementById('f-t2')?document.getElementById('f-t2').value:'');
   var t3=parseFloat(document.getElementById('f-t3')?document.getElementById('f-t3').value:'');
-  var vals=[t1,t2,t3].filter(function(v){return !isNaN(v);});
+  var t4=parseFloat(document.getElementById('f-t4')?document.getElementById('f-t4').value:'');
+  var vals=[t1,t2,t3,t4].filter(function(v){return !isNaN(v);});
   var el=document.getElementById('pv-tmp');if(!el)return;
   if(!vals.length){el.textContent='—';el.style.color='var(--ink)';return;}
   var pr=vals.reduce(function(s,v){return s+v;},0)/vals.length,c=DB.cfg;
@@ -1591,9 +1858,10 @@ function gMon(){
   if(!pila||!fecha||isNaN(t1)){toast('Complete los campos obligatorios','wn');return;}
   var t2=parseFloat(document.getElementById('f-t2').value);
   var t3=parseFloat(document.getElementById('f-t3').value);
-  var vals=[t1].concat(isNaN(t2)?[]:t2).concat(isNaN(t3)?[]:t3);
+  var t4=parseFloat(document.getElementById('f-t4').value);
+  var vals=[t1].concat(isNaN(t2)?[]:t2).concat(isNaN(t3)?[]:t3).concat(isNaN(t4)?[]:t4);
   var prom=vals.reduce(function(s,v){return s+v;},0)/vals.length;
-  DB.mons.push({id:Date.now().toString(),pila:pila,fecha:fecha,t1:isNaN(t1)?null:t1,t2:isNaN(t2)?null:t2,t3:isNaN(t3)?null:t3,prom:prom,hum:parseFloat(document.getElementById('f-hum').value)||null,estado:document.getElementById('f-est').value,obs:document.getElementById('f-obs').value});
+  DB.mons.push({id:Date.now().toString(),pila:pila,fecha:fecha,t1:isNaN(t1)?null:t1,t2:isNaN(t2)?null:t2,t3:isNaN(t3)?null:t3,t4:isNaN(t4)?null:t4,prom:prom,hum:parseInt(document.getElementById('f-hum').value)||null,estado:parseInt(document.getElementById('f-est').value)||null,obs:document.getElementById('f-obs').value});
   sv();closeM();render();toast('Monitoreo registrado');
 }
 
@@ -1677,7 +1945,7 @@ function gMov(){
   var pDest=DB.pilas.find(function(x){return x.cod===dc;});
   var isMontDest=DB.monts.some(function(m){return m.id===dc;});
   var d=pOrig?tmD(pOrig):0,ct=pOrig?cT(pOrig):0,pct=d>0?tm/d:0;
-  if(tm>d+0.001){toast('Solo hay '+fN(d,2)+' TM disponibles en '+oc,'wn');return;}
+  if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles en '+oc,'wn');return;} }
   // Regla SOLVITA (solo entre pilas)
   if(pOrig&&pDest){
     var origSolv=pOrig.estado==='SOLVITA Pendiente';
@@ -1753,7 +2021,7 @@ function gDesp(){
   var dest=document.getElementById('f-dest').value;
   if(!fecha||!pila||isNaN(tm)||!dest){toast('Complete los campos obligatorios','wn');return;}
   var p=DB.pilas.find(function(x){return x.cod===pila;}),d=p?tmD(p):0;
-  if(tm>d+0.001){toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;}
+  if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;} }
   var precio=parseFloat(document.getElementById('f-precio').value)||null;
   DB.desps.push({id:Date.now().toString(),fecha:fecha,pila:pila,tipo:tipo,tm:tm,dest:dest,precio:precio,obs:document.getElementById('f-obs').value});
   sv();closeM();render();toast('Despacho registrado');
@@ -1806,22 +2074,22 @@ function upEq(id,val){
   var c=parseFloat(val);if(isNaN(c))return;
   eq.c=c;var t=td();var last=eq.h[eq.h.length-1];
   if(last&&last.f===t) last.c=c; else eq.h.push({f:t,c:c});
-  sv();toast('Costo actualizado — aplica desde hoy');
+  sv();gsGuardarCatalogo('eqs',DB.eqs);toast('Costo actualizado — aplica desde hoy');
 }
 function addEq(){
   var n=prompt('Nombre del equipo:');if(!n||!n.trim())return;
   var c=parseFloat(prompt('Costo/hora ($):'));if(isNaN(c))return;
   DB.eqs.push({id:'e'+Date.now(),n:n.trim(),c:c,h:[{f:td(),c:c}]});
-  sv();rEqs();toast('Equipo agregado');
+  sv();gsGuardarCatalogo('eqs',DB.eqs);rEqs();toast('Equipo agregado');
 }
-function delEq(id){if(!confirm('¿Eliminar?'))return;DB.eqs=DB.eqs.filter(function(e){return e.id!==id;});sv();rEqs();}
+function delEq(id){if(!confirm('¿Eliminar?'))return;DB.eqs=DB.eqs.filter(function(e){return e.id!==id;});sv();gsGuardarCatalogo('eqs',DB.eqs);rEqs();}
 function addLab(){
   var n=prompt('Nombre de la labor:');if(!n||!n.trim())return;
   var cat=(prompt('Categoría:')||'Otro').trim();
   DB.labs.push({id:'l'+Date.now(),n:n.trim(),cat:cat});
-  sv();rLabs();toast('Labor agregada');
+  sv();gsGuardarCatalogo('labs',DB.labs);rLabs();toast('Labor agregada');
 }
-function delLab(id){if(!confirm('¿Eliminar?'))return;DB.labs=DB.labs.filter(function(l){return l.id!==id;});sv();rLabs();}
+function delLab(id){if(!confirm('¿Eliminar?'))return;DB.labs=DB.labs.filter(function(l){return l.id!==id;});sv();gsGuardarCatalogo('labs',DB.labs);rLabs();}
 function saveCfg(){
   ['cach','trash','red','tmin','tmax','hmin','hmax','solv','saviso'].forEach(function(k){
     var el=document.getElementById('c-'+k);
@@ -1833,12 +2101,12 @@ function saveCfg(){
     fmm.push(parseInt(document.getElementById('c-fm'+i)?document.getElementById('c-fm'+i).value:DC.fm[i-1])||DC.fm[i-1]);
   }
   DB.cfg.fv=fvv;DB.cfg.fm=fmm;DB.cfg._vig=td();
-  sv();toast('Parámetros guardados');render();
+  sv();gsGuardarCatalogo('cfg',DB.cfg);toast('Parámetros guardados en la nube');render();
 }
 function resetCfg(){
   if(!confirm('¿Restaurar defaults?'))return;
   DB.cfg={...DC,fv:[...DC.fv],fm:[...DC.fm]};
-  sv();rCfg();toast('Restaurado');
+  sv();gsGuardarCatalogo('cfg',DB.cfg);rCfg();toast('Restaurado');
 }
 
 function rPlanes(){
@@ -1954,6 +2222,75 @@ function irAHojaDiaria(){setModeDaily();}
 // ══════════════════════════════════════════════════════════════
 // KANBAN
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// ORDEN DE CAMPO — secuencia física del recorrido
+// Se guarda en DB.planes[cod].orden (número). Se sincroniza como catálogo.
+// Pilas sin orden definido van al final (orden = Infinity para sort).
+// ══════════════════════════════════════════════════════════════
+function ordenCampo(cod){
+  var o=(DB.planes[cod]||{}).orden;
+  return (o==null||o==='')?null:parseFloat(o);
+}
+// Comparador: ordena por orden de campo asc; las sin orden al final por código
+function cmpOrdenCampo(a,b){
+  var oa=ordenCampo(a),ob=ordenCampo(b);
+  if(oa==null&&ob==null) return String(a).localeCompare(String(b));
+  if(oa==null) return 1;
+  if(ob==null) return -1;
+  if(oa!==ob) return oa-ob;
+  return String(a).localeCompare(String(b));
+}
+function rOrdenCampo(){
+  var tbody=document.getElementById('orden-tb');if(!tbody)return;
+  var act=pep().filter(function(p){return p.estado!=='Finalizada';});
+  if(!act.length){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink4);font-style:italic">Sin pilas activas.</td></tr>';
+    return;
+  }
+  // Ordenar por orden de campo actual (las sin orden al final)
+  act.sort(function(a,b){return cmpOrdenCampo(a.cod,b.cod);});
+  tbody.innerHTML=act.map(function(p){
+    var mon=lastMonData(p.cod),lvv=lv(p.cod);
+    var o=ordenCampo(p.cod);
+    return '<tr id="orow-'+p.cod+'">'
+      +'<td><input type="number" class="mini-in orden-in" id="ord-'+p.cod+'" value="'+(o!=null?o:'')+'" step="1" min="0" placeholder="—" style="width:70px;text-align:center"></td>'
+      +'<td><strong style="color:var(--ms2)">'+p.cod+'</strong></td>'
+      +'<td>'+dB(p.fecha,td())+'d</td>'
+      +'<td style="font-size:10.5px;color:var(--ink3)">'+enm(p)+'</td>'
+      +'<td>'+eb(p.estado)+'</td>'
+      +'<td style="font-size:11px;color:var(--ink3)">'+(lvv?fmt(lvv):'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--ink3)">'+(mon&&mon.prom!=null?fN(mon.prom,1)+'°F':'—')+'</td>'
+      +'</tr>';
+  }).join('');
+}
+function guardarOrdenCampo(){
+  var act=pep().filter(function(p){return p.estado!=='Finalizada';});
+  var n=0;
+  act.forEach(function(p){
+    var el=document.getElementById('ord-'+p.cod);
+    if(!el)return;
+    var v=el.value.trim();
+    DB.planes[p.cod]=DB.planes[p.cod]||{};
+    if(v===''){ DB.planes[p.cod].orden=null; }
+    else { var num=parseFloat(v); if(!isNaN(num)){ DB.planes[p.cod].orden=num; n++; } }
+  });
+  gsGuardarCatalogo('planes',DB.planes);
+  sv();
+  rOrdenCampo();
+  toast(n+' pilas con orden definido — guardado');
+}
+function autoNumerarOrden(){
+  // Toma el orden visual actual de la tabla y asigna 10,20,30...
+  var rows=document.querySelectorAll('#orden-tb tr[id^="orow-"]');
+  var n=10;
+  rows.forEach(function(r){
+    var cod=r.id.replace('orow-','');
+    var el=document.getElementById('ord-'+cod);
+    if(el){ el.value=n; n+=10; }
+  });
+  toast('Renumerado 10 en 10 — revise y presione Guardar');
+}
+
 function rPlanifLab(){
   var el=document.getElementById('fecha-disp-lab');if(el)el.textContent=fmtL(pf);
   if(labMode==='kanban') rKanban();
@@ -2013,7 +2350,7 @@ function rKanban(){
       var inPlan=!!kanbanPlan[p.cod];
       var lvDate=lv(p.cod);
       var humData=lastHumData(p.cod);
-      var humStr=humData?humData.hum+'%':'—';
+      var humStr=humData?humData.hum+'/5':'—';
       var tempFecha=mon&&mon.fecha?fmt(mon.fecha):'—';
       var voltFecha=lvDate?fmt(lvDate):'—';
             return kcardDiv(p.cod,inPlan,'toggleKanbanPlan')
@@ -2123,12 +2460,8 @@ function rHojaDiaria(){
     return;
   }
   var f=pf;
-  cods.sort(function(a,b){
-    var oa={venc:0,hoy:1,prox:2,ok:3};
-    var pa=DB.pilas.find(function(x){return x.cod===a;})||{};
-    var pb=DB.pilas.find(function(x){return x.cod===b;})||{};
-    return (oa[urgV(pa,f)]||3)-(oa[urgV(pb,f)]||3);
-  });
+  // Orden de campo: secuencia física del recorrido. Sin orden → al final.
+  cods.sort(function(a,b){return cmpOrdenCampo(a,b);});
   tbody.innerHTML=cods.map(function(cod){
     var p=DB.pilas.find(function(x){return x.cod===cod;})||{cod:cod,fecha:td(),estado:'Activa'};
     var mon=lastMonData(cod); var hum=lastHumData(cod); var lvDate=lv(cod);
@@ -2148,7 +2481,7 @@ function rHojaDiaria(){
       +'<td style="font-size:10.5px;color:var(--ink3)">'+(lvDate?fmt(lvDate):'—')+'</td>'
       +'<td style="text-align:right;color:var(--ms2)"><strong>'+nv+'</strong></td>'
       +'<td style="font-size:10.5px;color:var(--ink3)">'+(mon?'<span style="color:'+(mon.prom>DB.cfg.tmax?'var(--rd2)':mon.prom<DB.cfg.tmin?'var(--sk)':'var(--ms2)')+'">'+fN(mon.prom,1)+'°F</span><br><span style="font-size:9px;color:var(--ink4)">'+fmt(mon.fecha)+'</span>':'—')+'</td>'
-      +'<td style="font-size:10.5px;color:var(--ink3)">'+(hum?hum.hum+'%<br><span style="font-size:9px;color:var(--ink4)">'+fmt(hum.fecha)+'</span>':'—')+'</td>'
+      +'<td style="font-size:10.5px;color:var(--ink3)">'+(hum?hum.hum+'/5<br><span style="font-size:9px;color:var(--ink4)">'+fmt(hum.fecha)+'</span>':'—')+'</td>'
       +'</tr>';
   }).join('');
   document.getElementById('daily-summary').textContent=cods.length+' pilas · '+fmtL(pf);
@@ -2321,7 +2654,7 @@ function rKanbanMon(){
       var voltFecha=lvDate?fmt(lvDate):'—';
       var tempFecha=mon&&mon.fecha?fmt(mon.fecha):'—';
       var humData=lastHumData(p.cod);
-      var humStr=humData?humData.hum+'%':'—';
+      var humStr=humData?humData.hum+'/5':'—';
       return kcardDiv(p.cod,inPlan,'toggleKanbanMonPlan')
         +'<div class="kcard-top">'
           +'<span class="kcard-cod">'+p.cod+'</span>'
@@ -2432,15 +2765,9 @@ function rMonTabla(){
   var cods=Object.keys(kanbanMonPlan);
   if(!cods.length){tbody.innerHTML='';return;}
   var f=pfMon;
-  cods.sort(function(a,b){
-    var oa={venc:0,hoy:1,prox:2,ok:3};
-    var pa=DB.pilas.find(function(x){return x.cod===a;})||{};
-    var pb=DB.pilas.find(function(x){return x.cod===b;})||{};
-    return (oa[urgM(pa,f)]||3)-(oa[urgM(pb,f)]||3);
-  });
-  var estOpts=['Bueno — estructura uniforme','Seco — requiere riego','Húmedo en exceso',
-    'Compactado — requiere volteo','Olor a amoniaco','Olor a sulfuro','Costra superficial',
-    'Hongos (normal)','Finalización aparente'].map(function(e){return'<option>'+e+'</option>';}).join('');
+  // Orden de campo: mismo recorrido físico que volteo.
+  cods.sort(function(a,b){return cmpOrdenCampo(a,b);});
+  var estOpts='';
 
   tbody.innerHTML=cods.map(function(cod){
     var p=DB.pilas.find(function(x){return x.cod===cod;})||{cod:cod,fecha:td(),estado:'Activa'};
@@ -2454,14 +2781,15 @@ function rMonTabla(){
       +'<td>'+urgLabel(um,urgDias,'M')+'</td>'
       +'<td style="font-size:10.5px;color:var(--ink3)">'+(mon?fmt(mon.fecha):'—')+'</td>'
       +'<td>'+(mon&&mon.prom!=null?'<span class="prom-chip '+tempClass(mon.prom)+'">'+fN(mon.prom,1)+'°F</span>':'—')+'</td>'
-      +'<td style="font-size:10.5px;color:var(--ink3)">'+(hum?hum.hum+'% ('+fmt(hum.fecha)+')':'—')+'</td>'
+      +'<td style="font-size:10.5px;color:var(--ink3)">'+(hum?hum.hum+'/5 ('+fmt(hum.fecha)+')':'—')+'</td>'
       +'<td><select class="mini-sel" id="mop-'+cod+'" onchange="asignarOpMon('+q(cod)+',this.value)">'+opMonOpts(cod)+'</select></td>'
       +'<td><input type="number" class="mini-in" id="mt1-'+cod+'" step="0.5" placeholder="°F" oninput="calcMonProm('+q(cod)+')"></td>'
       +'<td><input type="number" class="mini-in" id="mt2-'+cod+'" step="0.5" placeholder="°F" oninput="calcMonProm('+q(cod)+')"></td>'
       +'<td><input type="number" class="mini-in" id="mt3-'+cod+'" step="0.5" placeholder="°F" oninput="calcMonProm('+q(cod)+')"></td>'
+      +'<td><input type="number" class="mini-in" id="mt4-'+cod+'" step="0.5" placeholder="°F" oninput="calcMonProm('+q(cod)+')"></td>'
       +'<td><span class="prom-chip" id="mprom-'+cod+'">—</span></td>'
-      +'<td><input type="number" class="mini-in" id="mhum-'+cod+'" step="1" min="0" max="100" placeholder="%" style="width:46px"></td>'
-      +'<td><select class="mini-sel" id="mest-'+cod+'" style="min-width:180px">'+estOpts+'</select></td>'
+      +'<td><input type="number" class="mini-in" id="mhum-'+cod+'" step="1" min="1" max="5" placeholder="1-5" style="width:46px"></td>'
+      +'<td><input type="number" class="mini-in" id="mest-'+cod+'" step="1" min="1" max="5" placeholder="1-5" style="width:50px"></td>'
       +'</tr>';
   }).join('');
   document.getElementById('mon-summary').textContent=cods.length+' pilas · '+fmtL(pfMon);
@@ -2488,26 +2816,63 @@ function cambiarFechaMon(d){
 function irHoyMon(){pfMon=td();rPlanifMon();}
 function limpiarPlanMon(){limpiarKanbanMon();}
 function confirmarPlanMon(){confirmarMonTabla();}
+// Calcula y muestra el promedio en vivo mientras se capturan las 4 temperaturas
+function calcMonProm(cod){
+  var vals=['mt1-','mt2-','mt3-','mt4-'].map(function(pre){
+    var el=document.getElementById(pre+cod);
+    return el?parseFloat(el.value):NaN;
+  }).filter(function(v){return !isNaN(v);});
+  var el=document.getElementById('mprom-'+cod);
+  if(!el)return;
+  if(!vals.length){el.textContent='—';el.className='prom-chip';return;}
+  var pr=vals.reduce(function(s,v){return s+v;},0)/vals.length;
+  el.textContent=fN(pr,1)+'°F';
+  el.className='prom-chip '+tempClass(pr);
+}
 function confirmarMonTabla(){
   var cods=Object.keys(kanbanMonPlan);
   if(!cods.length){toast('No hay pilas seleccionadas para monitorear','wn');return;}
-  var creadas=0,sinOp=0;
+  var creadas=0,sinTemp=0,omit=0;
   cods.forEach(function(cod){
+    // Respetar el check de la fila
+    var chk=document.querySelector('#mrow-'+cod+' .chk-row');
+    if(chk&&!chk.checked){omit++;return;}
+    var t1=parseFloat(document.getElementById('mt1-'+cod)?document.getElementById('mt1-'+cod).value:'');
+    var t2=parseFloat(document.getElementById('mt2-'+cod)?document.getElementById('mt2-'+cod).value:'');
+    var t3=parseFloat(document.getElementById('mt3-'+cod)?document.getElementById('mt3-'+cod).value:'');
+    var t4=parseFloat(document.getElementById('mt4-'+cod)?document.getElementById('mt4-'+cod).value:'');
+    var vals=[t1,t2,t3,t4].filter(function(v){return !isNaN(v);});
+    // Sin ninguna temperatura no se guarda el monitoreo
+    if(!vals.length){sinTemp++;return;}
+    var prom=vals.reduce(function(s,v){return s+v;},0)/vals.length;
+    var hum=parseInt(document.getElementById('mhum-'+cod)?document.getElementById('mhum-'+cod).value:'');
+    var est=parseInt(document.getElementById('mest-'+cod)?document.getElementById('mest-'+cod).value:'')||null;
     var opId=document.getElementById('mop-'+cod)?document.getElementById('mop-'+cod).value:'';
-    if(!opId){sinOp++;return;}
     var opObj=(DB.operarios||[]).find(function(o){return o.id===opId;});
-    var t={
-      id:uid(), pila:cod, tipo:'monitoreo', operario:opObj?opObj.nombre:'', opId:opId,
-      fecha:pfMon, estado:'pendiente', equipo:'', horas:0, obs:'', creada:td()
-    };
-    DB.tareas.push(t);
+    DB.mons.push({
+      id:uid(), pila:cod, fecha:pfMon,
+      t1:isNaN(t1)?null:t1, t2:isNaN(t2)?null:t2, t3:isNaN(t3)?null:t3, t4:isNaN(t4)?null:t4,
+      prom:prom, hum:isNaN(hum)?null:hum, estado:est, op:opObj?opObj.nombre:'', obs:''
+    });
+    // Si había una tarea de monitoreo pendiente para esta pila, marcarla ejecutada
+    var tarea=(DB.tareas||[]).find(function(t){return t.pila===cod && t.tipo==='monitoreo' && t.estado==='pendiente';});
+    if(tarea){
+      tarea.estado='ejecutada'; tarea.fecha=pfMon;
+      gsEditar('tareas','id',tarea.id,clonReg(tarea));
+    }
     creadas++;
   });
-  if(!creadas&&sinOp>0){toast('Asigne un operario en cada pila antes de confirmar','wn');return;}
-  sv();kanbanMonPlan={};
+  if(!creadas){
+    if(sinTemp>0) toast('Capture al menos una temperatura por pila','wn');
+    else toast('No hay pilas para guardar','wn');
+    return;
+  }
+  sv();kanbanMonPlan={};monRows={};
+  cerrarTablaMon();
   rPlanifMon();render();
-  var msg=creadas+' tareas de monitoreo programadas para '+fmtL(pfMon);
-  if(sinOp) msg+=' · '+sinOp+' sin operario, omitidas';
+  var msg=creadas+' monitoreo'+(creadas!==1?'s':'')+' registrado'+(creadas!==1?'s':'')+' para '+fmtL(pfMon);
+  if(sinTemp) msg+=' · '+sinTemp+' sin temperatura, omitida'+(sinTemp!==1?'s':'');
+  if(omit) msg+=' · '+omit+' desmarcada'+(omit!==1?'s':'');
   toast(msg);
 }
 
@@ -2522,13 +2887,13 @@ function irHoy(){pf=td();pfMon=td();if(cur==='planif-lab')rPlanifLab();if(cur===
 function exportCSV(){
   var S=',';
   var rows=['PILAS','Codigo,Fecha,Estado,TM Cachaza,TM Trash,TM Frescas,TM Red Base,TM Entr,TM Salid,TM Desp,TM Disponibles,TM Finalizadas,Volteos,Costo MP,Costo Lab Neto,Costo Total,CostoXTM'];
-  DB.pilas.forEach(function(p){var d=tmD(p);rows.push([p.cod,p.fecha,p.estado,p.ca,p.tr,tmF(p),fN(tmRB(p),3),fN(tmEn(p.cod),3),fN(tmSa(p.cod),3),fN(tmDe(p.cod),3),fN(d,3),fN(tmFin(p),3),totalVolteos(p.cod),cMP(p).toFixed(2),cLabNeto(p).toFixed(2),cT(p).toFixed(2),ctm(p)?ctm(p).toFixed(2):''].join(S));});
+  DB.pilas.forEach(function(p){var d=tmD(p);rows.push([p.cod,p.fecha,p.estado,p.ca,p.tr,tmF(p),fN(tmRB(p),3),fN(tmEn(p.cod),3),fN(tmSa(p.cod),3),fN(tmDe(p.cod),3),fN(d,3),fN(tmFin(p),3),totalVolteos(p.cod),cMP(p).toFixed(2),cLabEnPila(p).toFixed(2),cT(p).toFixed(2),ctm(p)?ctm(p).toFixed(2):''].join(S));});
   rows.push('','MOVIMIENTOS','Fecha,Tipo,Origen,Destino,TM,Pct,Costo');
   DB.movs.forEach(function(m){rows.push([m.fecha,m.tipo,m.orig,m.dest,m.tm,(m.pct*100).toFixed(1)+'%',m.ct.toFixed(2)].join(S));});
   rows.push('','ACTIVIDADES','Pila,Fecha,Labor,Equipo,Horas,Costo');
   DB.acts.forEach(function(a){rows.push([a.pila,a.fecha,a.labor,a.equipo,a.horas,a.cost].join(S));});
-  rows.push('','MONITOREO','Pila,Fecha,T1,T2,T3,Promedio,Humedad,Estado');
-  DB.mons.forEach(function(m){rows.push([m.pila,m.fecha,m.t1||'',m.t2||'',m.t3||'',m.prom!=null?fN(m.prom,1):'',m.hum||'',m.estado||''].join(S));});
+  rows.push('','MONITOREO','Pila,Fecha,T1,T2,T3,T4,Promedio,Humedad,Estado');
+  DB.mons.forEach(function(m){rows.push([m.pila,m.fecha,m.t1||'',m.t2||'',m.t3||'',m.t4||'',m.prom!=null?fN(m.prom,1):'',m.hum||'',m.estado||''].join(S));});
   rows.push('','DESPACHOS','Fecha,Pila,Tipo,TM,Destino,Precio/TM');
   DB.desps.forEach(function(d){rows.push([d.fecha,d.pila,d.tipo,d.tm,d.dest,d.precio||''].join(S));});
   var a=document.createElement('a');
@@ -3056,8 +3421,8 @@ function montTmD(mid){
   return Math.max(0, montTmEn(mid) - montTmDesp(mid) - montTmPila(mid));
 }
 function montCostoRec(mid){
-  // Costo acumulado desde traslados recibidos
-  return DB.movs.filter(function(m){return m.dest===mid;}).reduce(function(s,m){return s+(m.ct||0);},0);
+  // Costo recibido desde traslados — dinámico, igual a lo que cede la pila origen
+  return DB.movs.filter(function(m){return m.dest===mid;}).reduce(function(s,m){return s+ctMov(m);},0);
 }
 function montCostoCamion(mid){
   // Parte del costo de camión asignada a este montículo
@@ -3189,7 +3554,7 @@ function fMontTraslado(midPref){
     +'<div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha" value="'+td()+'" max="'+td()+'"></div>'
     +'<div class="fg full"><label>Pila origen <span class="req">*</span></label><select id="f-orig" onchange="pvMontTr()">'+pilasOpts+'</select></div>'
     +'<div class="fg full"><label>Montículo destino <span class="req">*</span></label><select id="f-montdest" onchange="pvMontTr()">'+montOpts+'</select></div>'
-    +'<div class="fg"><label>TM a trasladar <span class="req">*</span></label><input type="number" id="f-tm" step="0.01" min="0.01" oninput="pvMontTr()"></div>'
+    +'<div class="fg"><label>TM a trasladar <span class="req">*</span></label><div style="display:flex;gap:6px;align-items:center"><input type="number" id="f-tm" step="0.01" min="0.01" oninput="pvMontTr()" style="flex:1"><button type="button" class="btn sm" onclick="llenarTotalTras()" title="Trasladar el total disponible de la pila">Total</button></div></div>'
     +'<div class="fg full"><div class="cv" id="pv-mont-tr">Seleccione pila y TM</div></div>'
     +'<div class="dv">Equipo de traslado (costo carga al montículo)</div>'
     +'<div class="fg"><label>Equipo</label><select id="f-eq" onchange="pvMontTr()">'+eqOpts+'</select></div>'
@@ -3219,6 +3584,16 @@ function pvMontTr(){
   if(elEq&&eq) elEq.innerHTML='Costo equipo: <strong>'+fM(ch*h)+'</strong> ('+fN(h,2)+'h × '+fM(ch)+'/h) — se carga al montículo';
 }
 
+// Llena el campo TM con el total disponible EXACTO de la pila seleccionada
+function llenarTotalTras(){
+  var cod=document.getElementById('f-orig')?document.getElementById('f-orig').value:'';
+  var p=DB.pilas.find(function(x){return x.cod===cod;});
+  if(!p){toast('Seleccione una pila primero','wn');return;}
+  var d=Math.round(tmD(p)*1000)/1000;
+  var el=document.getElementById('f-tm');
+  if(el){ el.value=d; pvMontTr(); }
+}
+
 function gMontTraslado(){
   var fecha=document.getElementById('f-fecha').value;
   var cod=document.getElementById('f-orig').value;
@@ -3227,7 +3602,7 @@ function gMontTraslado(){
   if(!fecha||!cod||!mid||isNaN(tm)||tm<=0){toast('Complete los campos obligatorios','wn');return;}
   var p=DB.pilas.find(function(x){return x.cod===cod;});
   var d=p?tmD(p):0;
-  if(tm>d+0.001){toast('Solo hay '+fN(d,2)+' TM disponibles en '+cod,'wn');return;}
+  if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles en '+cod,'wn');return;} }
   var ct=p?cT(p):0,pct=d>0?tm/d:0,cedido=ct*pct;
   var eqId=document.getElementById('f-eq').value;
   var h=parseFloat(document.getElementById('f-heq').value)||0;
@@ -3331,7 +3706,7 @@ function gMontDespacho(){
   var dest=document.getElementById('f-dest').value;
   if(!fecha||!mid||isNaN(tm)||!dest){toast('Complete los campos obligatorios','wn');return;}
   var d=montTmD(mid);
-  if(tm>d+0.001){toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;}
+  if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;} }
   var precio=parseFloat(document.getElementById('f-precio').value)||null;
   // Despacho registrado igual que pilas pero con pila=mid (id de montículo)
   DB.desps.push({
@@ -3375,7 +3750,7 @@ function gMontPila(){
   var tm=parseFloat(document.getElementById('f-tm').value);
   if(!fecha||!mid||isNaN(tm)||tm<=0){toast('Complete los campos obligatorios','wn');return;}
   var d=montTmD(mid);
-  if(tm>d+0.001){toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;}
+  if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;} }
   var mn=DB.monts.find(function(m){return m.id===mid;})||{n:mid};
   var ctm=montCtm(mid)||0;
   var costHered=Math.round(ctm*tm*100)/100;
@@ -3649,12 +4024,8 @@ function imprimirHojaLabores(){
   if(!cods.length){toast('No hay pilas en el plan','wn');return;}
 
   var f=pf;
-  cods.sort(function(a,b){
-    var oa={venc:0,hoy:1,prox:2,ok:3};
-    var pa=DB.pilas.find(function(x){return x.cod===a;})||{};
-    var pb=DB.pilas.find(function(x){return x.cod===b;})||{};
-    return (oa[urgV(pa,f)]||3)-(oa[urgV(pb,f)]||3);
-  });
+  // Hoja impresa en orden de campo: el operario la sigue sin retroceder.
+  cods.sort(function(a,b){return cmpOrdenCampo(a,b);});
 
   // Equipo options — Backhus 1 first
   var eqNames=['Backhus 1','Backhus 2'].concat(
@@ -3744,15 +4115,12 @@ function generarImpresionLabores(){
   if(!cods.length)return;
   var f=pf;
 
-  // Sort pilas: vencidas primero dentro de cada equipo
+  // Sort pilas: agrupadas por equipo, y dentro de cada equipo en orden de campo
   cods.sort(function(a,b){
-    var oa={venc:0,hoy:1,prox:2,ok:3};
-    var pa=DB.pilas.find(function(x){return x.cod===a;})||{};
-    var pb=DB.pilas.find(function(x){return x.cod===b;})||{};
     var ea=kanbanPlan[a]?kanbanPlan[a].equipo:'';
     var eb=kanbanPlan[b]?kanbanPlan[b].equipo:'';
     if(ea!==eb) return ea.localeCompare(eb);
-    return (oa[urgV(pa,f)]||3)-(oa[urgV(pb,f)]||3);
+    return cmpOrdenCampo(a,b);
   });
 
   // Group by equipo
@@ -3781,7 +4149,7 @@ function generarImpresionLabores(){
       var tempStr=mon&&mon.prom!=null?mon.prom.toFixed(1)+'F':'--';
       var tempColor=mon&&mon.prom!=null?(mon.prom>DB.cfg.tmax?'#8B3A3A':mon.prom<DB.cfg.tmin?'#2A5C7A':'#2C2018'):'#A89080';
       var humData=lastHumData(cod);
-      var humStr=humData?humData.hum+'%':'--';
+      var humStr=humData?humData.hum+'/5':'--';
       var bg=i%2===0?'background:#FAFAF8':'';
       var box='<div style="width:50px;height:20px;border:0.5px solid #C4A882;border-radius:3px"></div>';
       var chk='<div style="width:16px;height:16px;border:0.5px solid #C4A882;border-radius:2px;margin:auto"></div>';
@@ -3889,12 +4257,8 @@ function imprimirHojaMonitoreo(){
   }
   if(!cods.length){toast('No hay pilas en el plan de monitoreo','wn');return;}
   var f=pfMon;
-  cods.sort(function(a,b){
-    var oa={venc:0,hoy:1,prox:2,ok:3};
-    var pa=DB.pilas.find(function(x){return x.cod===a;})||{};
-    var pb=DB.pilas.find(function(x){return x.cod===b;})||{};
-    return (oa[urgM(pa,f)]||3)-(oa[urgM(pb,f)]||3);
-  });
+  // Hoja impresa en orden de campo.
+  cods.sort(function(a,b){return cmpOrdenCampo(a,b);});
   var ests=['Bueno','Seco','Humedo en exceso','Compactado','Amoniaco','Sulfuro','Costra','Hongos','Final'];
   var filas=cods.map(function(cod,i){
     var p=DB.pilas.find(function(x){return x.cod===cod;})||{cod:cod,fecha:f,estado:'Activa'};
@@ -3907,7 +4271,7 @@ function imprimirHojaMonitoreo(){
     var uc={venc:'#FDF0F0;color:#8B3A3A',hoy:'#FDF3E0;color:#C17B2A',prox:'#EEF6FA;color:#2A5C7A',ok:'#E8F2DC;color:#3D5A2C'};
     var urgColor=uc[u]||uc.ok;
     var lastTempStr=mon&&mon.prom!=null?mon.prom.toFixed(1)+'F ('+fmt(mon.fecha)+')':'--';
-    var lastHumStr=hum?hum.hum+'% ('+fmt(hum.fecha)+')':'--';
+    var lastHumStr=hum?hum.hum+'/5 ('+fmt(hum.fecha)+')':'--';
     var bg=i%2===0?'background:#FAFAF8':'';
     var td2='style="padding:5px 6px;border-bottom:0.5px solid #EDE8DE;font-size:11px"';
     var box='<div style="width:50px;height:20px;border:0.5px solid #C8E0EE;border-radius:3px"></div>';
@@ -3919,7 +4283,7 @@ function imprimirHojaMonitoreo(){
       +'<td '+td2+' style="padding:4px 6px;color:#7A6050;border-bottom:0.5px solid #EDE8DE">'+enm(p)+'</td>'
       +'<td '+td2+' style="padding:4px 6px;color:#7A6050;border-bottom:0.5px solid #EDE8DE">'+lastTempStr+'</td>'
       +'<td '+td2+' style="padding:4px 6px;color:#7A6050;border-bottom:0.5px solid #EDE8DE">'+lastHumStr+'</td>'
-      +'<td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td>'
+      +'<td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td><td '+td2+'>'+box+'</td>'
       +'<td style="padding:4px 5px;border-bottom:0.5px solid #EDE8DE;line-height:1.6">'+estCks+'</td></tr>';
   }).join('');
   var venc=cods.filter(function(c){var p=DB.pilas.find(function(x){return x.cod===c;})||{};return urgM(p,f)==='venc';}).length;
@@ -3951,7 +4315,7 @@ function imprimirHojaMonitoreo(){
     +'<table><thead><tr>'
     +'<th>#</th><th>Pila</th><th>Urgencia</th><th>Edad</th><th>Etapa</th>'
     +'<th>Ult. temp.</th><th>Ult. humedad</th>'
-    +'<th>T1 F</th><th>T2 F</th><th>T3 F</th><th>Prom F</th><th>Humedad %</th>'
+    +'<th>T1 F</th><th>T2 F</th><th>T3 F</th><th>T4 F</th><th>Prom F</th><th>Humedad 1-5</th>'
     +'<th>Estado fisico</th>'
     +'</tr></thead><tbody>'+filas+'</tbody></table>'
     +'<div class="ref"><strong>Referencia:</strong> Frio: &lt;'+DB.cfg.tmin+'F | Activo: '+DB.cfg.tmin+'--'+DB.cfg.tmax+'F | SOLVITA: &lt;130F | Alerta alta: &gt;'+DB.cfg.tmax+'F</div>'
