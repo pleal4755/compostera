@@ -2052,10 +2052,12 @@ function rEqs(){
     }
   }
   document.getElementById('eq-list').innerHTML=DB.eqs.map(function(e){
+    var nTarifas=(e.h&&e.h.length)?e.h.length:0;
     return'<div style="display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12px">'
-      +'<div style="flex:1;color:var(--ink)">'+e.n+'</div>'
+      +'<div style="flex:1;color:var(--ink)">'+e.n+(nTarifas>1?'<span style="font-size:9px;color:var(--ink4);margin-left:6px">'+nTarifas+' tarifas</span>':'')+'</div>'
       +'<input type="number" step="0.01" value="'+e.c+'" onchange="upEq('+q(e.id)+',this.value)" style="width:78px;text-align:right;font-size:12px;padding:3px 6px;border:1px solid '+(e.c===0?'var(--rd2)':'var(--bd2)')+';border-radius:6px;background:'+(e.c===0?'#fff5f5':'var(--cr2)')+';color:var(--ink)">'
       +'<span style="font-size:10px;color:var(--ink4);min-width:44px">$/h hoy</span>'
+      +'<button class="btn sm" onclick="abrirHistTarifa('+q(e.id)+')" title="Historial de tarifas y cambios retroactivos" style="background:var(--sk4);border-color:var(--sk3);color:var(--sk)"><i class="ti ti-history"></i></button>'
       +'<button class="btn sm dl" onclick="delEq('+q(e.id)+')"><i class="ti ti-trash"></i></button>'
       +'</div>';
   }).join('')||'<div style="font-size:12px;color:var(--ink4);font-style:italic;padding:5px 0">Sin equipos.</div>';
@@ -2069,6 +2071,104 @@ function rLabs(){
       +'</div>';
   }).join('')||'<div style="font-size:12px;color:var(--ink4);font-style:italic;padding:5px 0">Sin labores.</div>';
 }
+// ══════════════════════════════════════════════════════════════
+// EDITOR DE HISTORIAL DE TARIFAS POR EQUIPO
+// Permite agregar tarifas con fecha de vigencia (incl. retroactivas),
+// borrar entradas, y aplicar una tarifa a todo el histórico de un golpe.
+// El historial vive en eq.h = [{f:'YYYY-MM-DD', c:costo}, ...].
+// ══════════════════════════════════════════════════════════════
+var histTarifaEqId=null;
+function abrirHistTarifa(eqId){
+  histTarifaEqId=eqId;
+  var eq=DB.eqs.find(function(e){return e.id===eqId;});
+  if(!eq){toast('Equipo no encontrado','er');return;}
+  document.getElementById('mtit').textContent='Tarifas — '+eq.n;
+  document.getElementById('mbody').innerHTML=histTarifaHTML(eq);
+  document.getElementById('mover').classList.add('op');
+}
+function histTarifaHTML(eq){
+  var h=(eq.h||[]).slice().sort(function(a,b){return a.f.localeCompare(b.f);});
+  var filas=h.length?h.map(function(t,i){
+    // El tramo va desde su fecha hasta el día anterior a la siguiente (o "actual")
+    var hasta = i<h.length-1 ? 'hasta '+fmt(h[i+1].f) : 'vigente';
+    return '<tr>'
+      +'<td style="padding:5px 8px;font-size:12px">'+fmt(t.f)+'</td>'
+      +'<td style="padding:5px 8px;font-size:11px;color:var(--ink4)">'+hasta+'</td>'
+      +'<td style="padding:5px 8px;text-align:right"><strong style="color:'+(t.c>0?'var(--ms)':'var(--rd2)')+'">'+fM(t.c)+'</strong>/h</td>'
+      +'<td style="padding:5px 8px;text-align:right"><button class="btn sm dl" onclick="borrarTarifaHist('+i+')" title="Borrar esta tarifa"><i class="ti ti-trash"></i></button></td>'
+      +'</tr>';
+  }).join(''):'<tr><td colspan="4" style="text-align:center;padding:14px;color:var(--ink4);font-style:italic">Sin tarifas registradas.</td></tr>';
+
+  return '<div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Cada tarifa aplica <strong>desde su fecha en adelante</strong>, hasta que exista una más reciente. Así, las actividades usan automáticamente la tarifa vigente en su fecha. Para corregir el histórico, agregue una tarifa con fecha anterior o use «Aplicar a todo».</div></div>'
+    +'<div class="card" style="margin-bottom:12px"><div class="tw"><table style="width:100%">'
+    +'<thead><tr><th style="text-align:left;padding:5px 8px;font-size:10px;text-transform:uppercase;color:var(--ink4)">Desde</th><th style="text-align:left;padding:5px 8px;font-size:10px;text-transform:uppercase;color:var(--ink4)">Vigencia</th><th style="text-align:right;padding:5px 8px;font-size:10px;text-transform:uppercase;color:var(--ink4)">Tarifa</th><th></th></tr></thead>'
+    +'<tbody>'+filas+'</tbody></table></div></div>'
+    +'<div class="dv">Agregar tarifa con fecha de vigencia</div>'
+    +'<div class="fg2">'
+    +'<div class="fg"><label>Vigente desde <span class="req">*</span></label><input type="date" id="ht-fecha" value="'+td()+'" max="'+td()+'"></div>'
+    +'<div class="fg"><label>Costo $/hora <span class="req">*</span></label><input type="number" id="ht-costo" step="0.01" min="0" placeholder="Ej. 36"></div>'
+    +'</div>'
+    +'<div class="fa" style="flex-wrap:wrap;gap:8px">'
+    +'<button class="btn" onclick="closeM()">Cerrar</button>'
+    +'<button class="btn" onclick="aplicarTarifaTodo()" title="Pone esta tarifa como única para TODO el histórico"><i class="ti ti-arrows-horizontal"></i> Aplicar a todo el histórico</button>'
+    +'<button class="btn pr" onclick="agregarTarifaHist()"><i class="ti ti-plus"></i> Agregar tarifa</button>'
+    +'</div>';
+}
+function agregarTarifaHist(){
+  var eq=DB.eqs.find(function(e){return e.id===histTarifaEqId;});
+  if(!eq)return;
+  var f=document.getElementById('ht-fecha').value;
+  var c=parseFloat(document.getElementById('ht-costo').value);
+  if(!f||isNaN(c)||c<0){toast('Ingrese fecha y costo válidos','wn');return;}
+  eq.h=eq.h||[];
+  // Si ya existe una tarifa en esa fecha exacta, la reemplaza; si no, la agrega
+  var existente=eq.h.find(function(t){return t.f===f;});
+  if(existente){ existente.c=c; }
+  else { eq.h.push({f:f,c:c}); }
+  // Reordenar por fecha y actualizar la tarifa "actual" (la más reciente)
+  eq.h.sort(function(a,b){return a.f.localeCompare(b.f);});
+  eq.c=eq.h[eq.h.length-1].c;
+  guardarTarifasEq(eq);
+  abrirHistTarifa(eq.id); // refrescar
+  toast('Tarifa agregada — vigente desde '+fmt(f));
+}
+function borrarTarifaHist(idx){
+  var eq=DB.eqs.find(function(e){return e.id===histTarifaEqId;});
+  if(!eq||!eq.h)return;
+  var h=eq.h.slice().sort(function(a,b){return a.f.localeCompare(b.f);});
+  if(idx<0||idx>=h.length)return;
+  if(eq.h.length<=1){toast('Debe quedar al menos una tarifa','wn');return;}
+  if(!confirm('¿Borrar la tarifa de '+fmt(h[idx].f)+' ('+fM(h[idx].c)+'/h)?'))return;
+  var aBorrar=h[idx];
+  eq.h=eq.h.filter(function(t){return !(t.f===aBorrar.f&&t.c===aBorrar.c);});
+  eq.h.sort(function(a,b){return a.f.localeCompare(b.f);});
+  eq.c=eq.h[eq.h.length-1].c;
+  guardarTarifasEq(eq);
+  abrirHistTarifa(eq.id);
+  toast('Tarifa borrada');
+}
+function aplicarTarifaTodo(){
+  var eq=DB.eqs.find(function(e){return e.id===histTarifaEqId;});
+  if(!eq)return;
+  var c=parseFloat(document.getElementById('ht-costo').value);
+  if(isNaN(c)||c<0){toast('Ingrese el costo $/hora primero','wn');return;}
+  if(!confirm('¿Aplicar '+fM(c)+'/h a TODO el histórico de '+eq.n+'? Esto reemplaza todas las tarifas anteriores por una sola, vigente desde el inicio.'))return;
+  // Una sola tarifa, con fecha muy antigua para que cubra todo el histórico
+  eq.h=[{f:'2000-01-01',c:c}];
+  eq.c=c;
+  guardarTarifasEq(eq);
+  abrirHistTarifa(eq.id);
+  toast(eq.n+': '+fM(c)+'/h aplicado a todo el histórico');
+}
+// Guarda en la nube y recalcula costos de todas las actividades
+function guardarTarifasEq(eq){
+  sv();
+  gsGuardarCatalogo('eqs',DB.eqs);
+  if(typeof recalcularCostosConProrrateo==='function') recalcularCostosConProrrateo();
+  rEqs();
+  render();
+}
+
 function upEq(id,val){
   var eq=DB.eqs.find(function(e){return e.id===id;});if(!eq)return;
   var c=parseFloat(val);if(isNaN(c))return;
