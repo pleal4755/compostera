@@ -615,7 +615,7 @@ td.hi{background:var(--ms6)}
     <div class="sc" id="sc-pilas">
       <div style="display:flex;gap:7px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
         <select id="flt-est" onchange="rPilas()" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:#fff;color:var(--ink)">
-          <option value="">Todos los estados</option><option>Activa</option><option>En Maduración</option><option>SOLVITA Pendiente</option><option>Finalizada</option>
+          <option value="">Todos los estados</option><option>Activa</option><option>En Maduración</option><option>SOLVITA Pendiente</option><option>SOLVITA Aprobado</option><option>Finalizada</option>
         </select>
         <span style="font-size:11px;color:var(--ink4);font-style:italic">Clic en <i class="ti ti-transfer" style="color:var(--sk)"></i> para ver movimientos · Hover en <span style="background:var(--sk4);color:var(--sk);border:1px solid var(--sk3);border-radius:8px;padding:1px 6px;font-size:10px">i</span> para desglose de costos</span>
       </div>
@@ -990,7 +990,7 @@ function recalcularCostosConProrrateo(){
 const DC={cach:85,trash:15,red:0.333,tmin:113,tmax:149,hmin:2,hmax:4,solv:90,saviso:7,fv:[5,7,10,14],fm:[3,5,7,10]};
 const DEQ=[{id:'e1',n:'Cargador Frontal',c:45,h:[{f:'2026-01-01',c:45}]},{id:'e2',n:'Tractor + implemento',c:30,h:[{f:'2026-01-01',c:30}]},{id:'e3',n:'Retroexcavadora',c:55,h:[{f:'2026-01-01',c:55}]}];
 const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación'},{id:'l2',n:'Volteo',cat:'Volteo'},{id:'l3',n:'Riego + Volteo',cat:'Volteo'},{id:'l4',n:'Riego',cat:'Riego'},{id:'l5',n:'Traslado',cat:'Movimiento'},{id:'l6',n:'Inspección general',cat:'Monitoreo'},{id:'l7',n:'Monitoreo temperatura',cat:'Monitoreo'},{id:'l8',n:'Despacho parcial',cat:'Despacho'},{id:'l9',n:'Despacho total',cat:'Despacho'},{id:'l10',n:'Análisis SOLVITA',cat:'Control de calidad'}];
-const ESTADOS=['Activa','En Maduración','SOLVITA Pendiente','Finalizada'];
+const ESTADOS=['Activa','En Maduración','SOLVITA Pendiente','SOLVITA Aprobado','Finalizada'];
 const EC=['#3D5A2C','#6B9A4A','#C17B2A','#2A5C7A'];
 
 function initDB(){
@@ -1216,7 +1216,7 @@ function limpiarLeidas(){
   toast('Alertas restauradas');
 }
 
-function eb(e){const m={Activa:'bg','En Maduración':'bb','SOLVITA Pendiente':'ba',Finalizada:'bpu'};return '<span class="badge '+(m[e]||'bgy')+'">'+e+'</span>';}
+function eb(e){const m={Activa:'bg','En Maduración':'bb','SOLVITA Pendiente':'ba','SOLVITA Aprobado':'bgy',Finalizada:'bpu'};return '<span class="badge '+(m[e]||'bgy')+'">'+e+'</span>';}
 function tbadge(v){if(v===null||v===undefined)return '<span class="badge bgy">—</span>';const c=DB.cfg;if(v<c.tmin)return '<span class="badge bb">'+fN(v,1)+'°F</span>';if(v>c.tmax)return '<span class="badge br2">'+fN(v,1)+'°F</span>';return '<span class="badge bg">'+fN(v,1)+'°F</span>';}
 
 function nav(sec){
@@ -1983,15 +1983,15 @@ function gMov(){
 
 function fDesp(o){
   o=o||{};
-  // Solo pilas con SOLVITA Pendiente o Finalizada pueden despacharse
+  // Solo pilas con SOLVITA Aprobado o Finalizada pueden despacharse
   var aptas=DB.pilas.filter(function(p){
-    return p.estado==='SOLVITA Pendiente'||p.estado==='Finalizada';
+    return (p.estado==='SOLVITA Aprobado'||p.estado==='Finalizada') && tmD(p)>0.01;
   });
   var pilasOpts=aptas.length
     ? aptas.map(function(p){return'<option value="'+p.cod+'">'+p.cod+' — '+p.estado+'</option>';}).join('')
     : '<option value="">Sin pilas aptas para despacho</option>';
   return'<div class="ap ap-i" style="margin-bottom:10px"><i class="ti ti-info-circle"></i>'
-    +'Solo pilas con estado <strong>SOLVITA Pendiente</strong> o <strong>Finalizada</strong> pueden despacharse.</div>'
+    +'Solo pilas con <strong>SOLVITA Aprobado</strong> (o Finalizada) y con saldo disponible pueden despacharse.</div>'
     +'<div class="fg2">'
     +'<div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha" value="'+td()+'" max="'+td()+'"></div>'
     +'<div class="fg"><label>Pila <span class="req">*</span></label><select id="f-pila" onchange="pvDs()">'+pilasOpts+'</select></div>'
@@ -2021,6 +2021,10 @@ function gDesp(){
   var dest=document.getElementById('f-dest').value;
   if(!fecha||!pila||isNaN(tm)||!dest){toast('Complete los campos obligatorios','wn');return;}
   var p=DB.pilas.find(function(x){return x.cod===pila;}),d=p?tmD(p):0;
+  // Si la fuente es una pila (no montículo), exige SOLVITA Aprobado o Finalizada
+  if(p && p.estado!=='SOLVITA Aprobado' && p.estado!=='Finalizada'){
+    toast(pila+' no tiene SOLVITA Aprobado — no se puede despachar','er');return;
+  }
   if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;} }
   var precio=parseFloat(document.getElementById('f-precio').value)||null;
   DB.desps.push({id:Date.now().toString(),fecha:fecha,pila:pila,tipo:tipo,tm:tm,dest:dest,precio:precio,obs:document.getElementById('f-obs').value});
@@ -3174,6 +3178,7 @@ function rKanbanSolv(){
       var _oc=canAdd?'toggleSolvPlan('+q(p.cod)+')':canAprob?'marcarAprobadaSolv('+q(p.cod)+')':'';
       return '<div class="kcard'+(inPlan?' kin-plan':'')+'"'
         +(_oc?' onclick="'+_oc+'"':'')
+        +' onmouseenter="showTempChart('+q(p.cod)+',event)" onmouseleave="hideTempChart()"'
         +(canAprob?' style="border-color:var(--ms3)"':(!canAdd?' style="cursor:default;opacity:.6"':''))+'>'
         +'<div class="kcard-top">'
           +'<span class="kcard-cod">'+p.cod+'</span>'
@@ -3223,18 +3228,19 @@ function sugerirTodosSolv(){
 function marcarAprobadaSolv(cod){
   var p=DB.pilas.find(function(x){return x.cod===cod;});
   if(!p)return;
-  if(!confirm('Pila '+cod+': ¿marcar como Finalizada y liberar para despacho?'))return;
-  p.estado='Finalizada';
+  if(!confirm('Pila '+cod+': ¿marcar SOLVITA como Aprobado y liberar para despacho/traslado?'))return;
+  p.estado='SOLVITA Aprobado';
+  gsEditar('pilas','cod',cod,clonReg(p));
   sv();rKanbanSolv();render();
-  toast(cod+' liberada para despacho');
+  toast(cod+' → SOLVITA Aprobado, liberada para despacho/traslado');
 }
 function aprobarTodasPendientes(){
   var pend=DB.pilas.filter(function(p){return p.estado==='SOLVITA Pendiente';});
   if(!pend.length){toast('No hay pilas con SOLVITA Pendiente','wn');return;}
-  if(!confirm('¿Liberar '+pend.length+' pila'+(pend.length!==1?'s':'')+' como Finalizadas para despacho?'))return;
-  pend.forEach(function(p){p.estado='Finalizada';});
+  if(!confirm('¿Aprobar SOLVITA de '+pend.length+' pila'+(pend.length!==1?'s':'')+' y liberarlas para despacho/traslado?'))return;
+  pend.forEach(function(p){p.estado='SOLVITA Aprobado';gsEditar('pilas','cod',p.cod,clonReg(p));});
   sv();rKanbanSolv();render();
-  toast(pend.length+' pilas liberadas');
+  toast(pend.length+' pilas → SOLVITA Aprobado');
 }
 function limpiarSolv(){
   kanbanSolvPlan = {};
@@ -3651,10 +3657,14 @@ function openFormMont(tipo,mid){
 
 function fMontTraslado(midPref){
   var montOpts=DB.monts.map(function(m){return'<option value="'+m.id+'" '+(m.id===midPref?'selected':'')+'>'+m.n+' ('+fN(montTmD(m.id),1)+' TM disp.)</option>';}).join('');
-  var pilasOpts=DB.pilas.filter(function(p){return p.estado!=='Finalizada'&&tmD(p)>0.01;})
-    .map(function(p){return'<option value="'+p.cod+'">'+p.cod+' — '+fN(tmD(p),2)+' TM — '+p.estado+'</option>';}).join('');
+  var aptasT=DB.pilas.filter(function(p){return (p.estado==='SOLVITA Aprobado'||p.estado==='Finalizada')&&tmD(p)>0.01;});
+  var pilasOpts=aptasT.length
+    ? aptasT.map(function(p){return'<option value="'+p.cod+'">'+p.cod+' — '+fN(tmD(p),2)+' TM — '+p.estado+'</option>';}).join('')
+    : '<option value="">Sin pilas con SOLVITA Aprobado y saldo</option>';
   var eqOpts='<option value="">— sin equipo —</option>'+DB.eqs.map(function(e){return'<option value="'+e.id+'" '+(e.n==='Cargador Frontal'?'selected':'')+'>'+e.n+'</option>';}).join('');
-  return'<div class="fg2">'
+  return'<div class="ap ap-i" style="margin-bottom:10px"><i class="ti ti-info-circle"></i>'
+    +'Solo pilas con <strong>SOLVITA Aprobado</strong> (o Finalizada) y con saldo pueden trasladarse a montículo.</div>'
+    +'<div class="fg2">'
     +'<div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha" value="'+td()+'" max="'+td()+'"></div>'
     +'<div class="fg full"><label>Pila origen <span class="req">*</span></label><select id="f-orig" onchange="pvMontTr()">'+pilasOpts+'</select></div>'
     +'<div class="fg full"><label>Montículo destino <span class="req">*</span></label><select id="f-montdest" onchange="pvMontTr()">'+montOpts+'</select></div>'
@@ -3705,6 +3715,9 @@ function gMontTraslado(){
   var tm=parseFloat(document.getElementById('f-tm').value);
   if(!fecha||!cod||!mid||isNaN(tm)||tm<=0){toast('Complete los campos obligatorios','wn');return;}
   var p=DB.pilas.find(function(x){return x.cod===cod;});
+  if(p && p.estado!=='SOLVITA Aprobado' && p.estado!=='Finalizada'){
+    toast(cod+' no tiene SOLVITA Aprobado — no se puede trasladar','er');return;
+  }
   var d=p?tmD(p):0;
   if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles en '+cod,'wn');return;} }
   var ct=p?cT(p):0,pct=d>0?tm/d:0,cedido=ct*pct;
@@ -3914,7 +3927,7 @@ function closeBatch(e){
 function rBatchLista(){
   var qs = (document.getElementById('batch-srch')||{value:''}).value.toLowerCase();
   var pilas = DB.pilas.filter(function(p){
-    return p.estado !== 'Finalizada' && tmD(p) > 0.01;
+    return (p.estado === 'SOLVITA Aprobado' || p.estado === 'Finalizada') && tmD(p) > 0.01;
   });
   if(qs) pilas = pilas.filter(function(p){return p.cod.toLowerCase().indexOf(qs) >= 0;});
   // Sort: seleccionadas primero, luego por código
