@@ -211,7 +211,7 @@ const GS_URL   = 'https://script.google.com/macros/s/AKfycbwb12Ibn7_-_vlsHXzxrCn
 const GS_TOKEN = 'compostera2026';
 
 // Estado en memoria
-let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{}, eqs:[] };
+let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{}, eqs:[], sectores:[] };
 let OP = null;            // operario logueado
 let TURNO = null;         // turno abierto del día (si existe)
 let pilaActiva = null;    // pila seleccionada para registrar
@@ -241,6 +241,7 @@ function gsCargar(){
       DATOS.eqs = (res.catalogos && res.catalogos.eqs) || [];
       DATOS.operarios = res.operarios||[];
       DATOS.planes = (res.catalogos&&res.catalogos.planes)||{};
+      DATOS.sectores = (res.catalogos&&res.catalogos.sectores)||[];
       return true;
     });
 }
@@ -324,13 +325,21 @@ function render(){
   var pend=(DATOS.tareas||[]).filter(function(t){
     return t.opId===OP.id && t.estado==='pendiente';
   });
-  // Orden de campo: el operario recorre las pilas en la secuencia física.
-  // Sin orden definido → al final. A igual orden, por fecha.
+  // Orden: primero por SECTOR (según catálogo), luego por orden de campo.
+  // Sin sector u orden → al final.
   function ordCampo(cod){
     var o=(DATOS.planes[cod]||{}).orden;
     return (o==null||o==='')?null:parseFloat(o);
   }
+  function secPos(cod){
+    var sid=(DATOS.planes[cod]||{}).sector;
+    if(!sid) return 9999;
+    var i=(DATOS.sectores||[]).findIndex(function(x){return x.id===sid;});
+    return i<0?9999:i;
+  }
   pend.sort(function(a,b){
+    var sa=secPos(a.pila),sb=secPos(b.pila);
+    if(sa!==sb) return sa-sb;
     var oa=ordCampo(a.pila),ob=ordCampo(b.pila);
     if(oa==null&&ob==null) return (a.fecha||'').localeCompare(b.fecha||'');
     if(oa==null) return 1;
@@ -393,6 +402,12 @@ function barraTurno(){
 }
 
 // Una fila de tarea (lista compacta)
+function nombreSector(cod){
+  var sid=(DATOS.planes[cod]||{}).sector;
+  if(!sid) return '';
+  var s=(DATOS.sectores||[]).find(function(x){return x.id===sid;});
+  return s?s.n:'';
+}
 function filaTarea(t){
   var p=DATOS.pilas.find(function(x){return x.cod===t.pila;})||{};
   var edad=edadDias(p.fecha);
@@ -401,10 +416,11 @@ function filaTarea(t){
   var titulo = esVolteo?'Volteo / Riego':'Monitoreo';
   var atrasada = t.fecha < hoy();
   var fnExec = esVolteo ? 'ejecutarVolteo' : 'ejecutarMonitoreo';
+  var sec = nombreSector(t.pila);
   return '<div class="fila-tarea" onclick="'+fnExec+'(\''+t.id+'\')">'+
     '<div class="ft-tipo">'+icono+'</div>'+
     '<div class="ft-info">'+
-      '<div class="ft-titulo">'+titulo+' · <b>'+t.pila+'</b></div>'+
+      '<div class="ft-titulo">'+titulo+' · <b>'+t.pila+'</b>'+(sec?' <span style="font-weight:700;color:#c87a1a;font-size:12px">📍 '+sec+'</span>':'')+'</div>'+
       '<div class="ft-sub">'+(edad!=null?(edad+' días'):'—')+(p.ca?(' · '+p.ca+' TM'):'')+
       (atrasada?' · <span style="color:#c0392b;font-weight:600">Atrasada</span>':' · '+fmtCorto(t.fecha))+'</div>'+
     '</div>'+
