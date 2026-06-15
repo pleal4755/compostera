@@ -2424,14 +2424,11 @@ function rKanban(){
     else if(u==='prox') grupos.prox.push(p);
     else grupos.bien.push(p);
   });
-  var sortFn=function(a,b){return dsv(b,f)-dsv(a,f);};
+  // Dentro de cada columna, ordenar por orden de campo (recorrido físico)
+  var sortFn=function(a,b){return cmpOrdenCampo(a.cod,b.cod);};
   grupos.venc.sort(sortFn); grupos.hoy.sort(sortFn);
-  // Ordenar campo por temperatura desc (más calientes primero)
-  grupos.campo.sort(function(a,b){
-    var ma=lastMonData(a.cod),mb=lastMonData(b.cod);
-    var ta=ma&&ma.prom!=null?ma.prom:0,tb=mb&&mb.prom!=null?mb.prom:0;
-    return tb-ta;
-  });
+  grupos.prox.sort(sortFn); grupos.bien.sort(sortFn);
+  grupos.campo.sort(sortFn);
 
   var board=document.getElementById('kanban-board');
   if(!board)return;
@@ -2732,6 +2729,10 @@ function rKanbanMon(){
     else if(u==='prox') grupos.prox.push(p);
     else grupos.bien.push(p);
   });
+  // Dentro de cada columna, ordenar por orden de campo (recorrido físico)
+  var sortFnM=function(a,b){return cmpOrdenCampo(a.cod,b.cod);};
+  grupos.venc.sort(sortFnM); grupos.hoy.sort(sortFnM);
+  grupos.prox.sort(sortFnM); grupos.bien.sort(sortFnM);
 
   // Actualizar conteos
   var cntEl=document.getElementById('kmon-cnt');
@@ -3139,13 +3140,11 @@ function rKanbanSolv(){
     var u=urgSolv(p,pfSolv);
     if(grupos[u]) grupos[u].push(p);
   });
-  // Finalizadas con saldo van también a pendiente si quiere verlas
-  grupos.candidata.sort(function(a,b){
-    var ma=lastMonData(a.cod),mb=lastMonData(b.cod);
-    var ta=ma&&ma.prom!=null?ma.prom:999,tb=mb&&mb.prom!=null?mb.prom:999;
-    return ta-tb;
-  });
-  grupos.no_lista.sort(function(a,b){return dB(b.fecha,td())-dB(a.fecha,td());});
+  // Dentro de cada columna, ordenar por orden de campo (recorrido físico)
+  var sortFnS=function(a,b){return cmpOrdenCampo(a.cod,b.cod);};
+  grupos.candidata.sort(sortFnS);
+  grupos.pendiente.sort(sortFnS);
+  grupos.no_lista.sort(sortFnS);
 
   var board=document.getElementById('kanban-solv-board');
   if(!board)return;
