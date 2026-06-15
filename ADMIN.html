@@ -467,7 +467,7 @@ td.hi{background:var(--ms6)}
               <thead>
                 <tr>
                   <th style="width:28px"></th>
-                  <th>Pila</th><th>Edad</th><th>Etapa</th><th>Urgencia</th>
+                  <th>Pila</th><th>Sector</th><th>Edad</th><th>Etapa</th><th>Urgencia</th>
                   <th>Labor</th><th>Equipo</th><th>Horas</th><th>Operario</th>
                   <th>Últ. volteo</th><th>Volteos</th><th>Últ. temp.</th><th>Últ. hum.</th>
                 </tr>
@@ -532,7 +532,7 @@ td.hi{background:var(--ms6)}
               <thead>
                 <tr>
                   <th style="width:28px"></th>
-                  <th>Pila</th><th>Edad</th><th>Etapa</th><th>Urgencia</th><th>Volteos</th>
+                  <th>Pila</th><th>Sector</th><th>Edad</th><th>Etapa</th><th>Urgencia</th><th>Volteos</th>
                   <th>Últ. mon.</th><th>Últ. temp.</th><th>Últ. hum.</th><th>Operario</th>
                   <th class="dhi">T1 °F</th><th class="dhi">T2 °F</th><th class="dhi">T3 °F</th><th class="dhi">T4 °F</th><th class="dhi">Prom.</th>
                   <th>Humedad 1-5</th><th>Estado 1-5</th>
@@ -564,7 +564,7 @@ td.hi{background:var(--ms6)}
         <span style="font-size:11px;color:var(--ink4);font-style:italic">Sugerencia: numere 10, 20, 30… así puede intercalar una pila nueva (ej. 25) sin renumerar todo.</span>
       </div>
       <div class="card"><div class="tw"><table>
-        <thead><tr><th style="width:90px">Orden</th><th>Código</th><th>Edad</th><th>Etapa</th><th>Estado</th><th>Últ. volteo</th><th>Últ. temp.</th></tr></thead>
+        <thead><tr><th style="width:120px">Sector</th><th style="width:90px">Orden</th><th>Código</th><th>Edad</th><th>Etapa</th><th>Estado</th><th>Últ. volteo</th><th>Últ. temp.</th></tr></thead>
         <tbody id="orden-tb"></tbody>
       </table></div></div>
     </div>
@@ -671,6 +671,8 @@ td.hi{background:var(--ms6)}
           <div id="eq-list"></div><div style="margin-top:8px"><button class="btn" onclick="addEq()"><i class="ti ti-plus"></i> Agregar equipo</button></div></div></div>
       <div class="dv">Tipos de labor</div>
       <div class="card"><div class="cb"><div id="lab-list"></div><div style="margin-top:8px"><button class="btn" onclick="addLab()"><i class="ti ti-plus"></i> Agregar labor</button></div></div></div>
+      <div class="dv">Sectores de campo</div>
+      <div class="card"><div class="cb"><div id="sec-list"></div><div style="margin-top:8px"><button class="btn" onclick="addSector()"><i class="ti ti-plus"></i> Agregar sector</button></div></div></div>
       <div style="display:flex;gap:8px;margin-top:13px">
         <button class="btn pr" onclick="saveCfg()"><i class="ti ti-check"></i> Guardar</button>
         <button class="btn" onclick="resetCfg()">Restaurar por defecto</button>
@@ -833,6 +835,7 @@ function gsCargarTodo(){
       if(cat.cfg)     DB.cfg=cat.cfg;
       if(cat.eqs)     DB.eqs=cat.eqs;
       if(cat.labs)    DB.labs=cat.labs;
+      if(cat.sectores)DB.sectores=cat.sectores;
       if(cat.planes)  DB.planes=cat.planes;
       if(cat.monts)   DB.monts=cat.monts;
       if(cat.camiones)DB.camiones=cat.camiones;
@@ -1000,6 +1003,8 @@ function initDB(){
     eqs:JSON.parse(JSON.stringify(DEQ)),
     labs:JSON.parse(JSON.stringify(DLAB)),
     planes:{},cnt:0,alertasLeidas:{},
+    // Sectores físicos de la compostera (catálogo configurable)
+    sectores:[{id:'s1',n:'Sector 1'},{id:'s2',n:'Sector 2'}],
     // Montículos: 3 bodegas fijas de producto terminado
     monts:[
       {id:'m1',n:'Montículo 1',obs:''},
@@ -1022,6 +1027,7 @@ function ld(){
       {id:'m3',n:'Montículo 3',obs:''}
     ];
     if(!d.camiones) d.camiones=[];
+    if(!d.sectores||!d.sectores.length) d.sectores=[{id:'s1',n:'Sector 1'},{id:'s2',n:'Sector 2'}];
     if(!d.alertasLeidas) d.alertasLeidas={};
     if(!d.planes) d.planes={};
     if(!d.cfg.fv) d.cfg.fv=[...DC.fv];
@@ -2041,7 +2047,7 @@ function rCfg(){
     var ev=document.getElementById('c-fv'+i);if(ev)ev.value=fvv[i-1];
     var em=document.getElementById('c-fm'+i);if(em)em.value=fmm[i-1];
   }
-  rEqs();rLabs();
+  rEqs();rLabs();rSectores();
 }
 function rEqs(){
   // Warning if any volteo-type equipo has rate $0
@@ -2074,6 +2080,39 @@ function rLabs(){
       +'<button class="btn sm dl" onclick="delLab('+q(l.id)+')" style="margin-left:auto"><i class="ti ti-trash"></i></button>'
       +'</div>';
   }).join('')||'<div style="font-size:12px;color:var(--ink4);font-style:italic;padding:5px 0">Sin labores.</div>';
+}
+// ── Sectores de campo (catálogo) ──────────────────────────────
+function rSectores(){
+  var el=document.getElementById('sec-list');if(!el)return;
+  el.innerHTML=(DB.sectores||[]).map(function(s){
+    return'<div style="display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12px">'
+      +'<input type="text" value="'+(s.n||'').replace(/"/g,'&quot;')+'" onchange="renSector('+q(s.id)+',this.value)" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--bd2);border-radius:6px;background:var(--cr2);color:var(--ink)">'
+      +'<button class="btn sm dl" onclick="delSector('+q(s.id)+')"><i class="ti ti-trash"></i></button>'
+      +'</div>';
+  }).join('')||'<div style="font-size:12px;color:var(--ink4);font-style:italic;padding:5px 0">Sin sectores.</div>';
+}
+function addSector(){
+  var n=prompt('Nombre del sector:');if(!n||!n.trim())return;
+  DB.sectores=DB.sectores||[];
+  DB.sectores.push({id:'s'+Date.now(),n:n.trim()});
+  sv();gsGuardarCatalogo('sectores',DB.sectores);rSectores();toast('Sector agregado');
+}
+function renSector(id,val){
+  var s=(DB.sectores||[]).find(function(x){return x.id===id;});
+  if(!s)return;
+  s.n=(val||'').trim()||s.n;
+  sv();gsGuardarCatalogo('sectores',DB.sectores);
+  toast('Sector renombrado');
+}
+function delSector(id){
+  if(!confirm('¿Eliminar este sector? Las pilas asignadas a él quedarán sin sector.'))return;
+  DB.sectores=(DB.sectores||[]).filter(function(s){return s.id!==id;});
+  // Limpiar la asignación en las pilas que lo tenían
+  Object.keys(DB.planes||{}).forEach(function(cod){
+    if(DB.planes[cod] && DB.planes[cod].sector===id) DB.planes[cod].sector=null;
+  });
+  sv();gsGuardarCatalogo('sectores',DB.sectores);gsGuardarCatalogo('planes',DB.planes);
+  rSectores();render();toast('Sector eliminado');
 }
 // ══════════════════════════════════════════════════════════════
 // EDITOR DE HISTORIAL DE TARIFAS POR EQUIPO
@@ -2335,8 +2374,31 @@ function ordenCampo(cod){
   var o=(DB.planes[cod]||{}).orden;
   return (o==null||o==='')?null:parseFloat(o);
 }
-// Comparador: ordena por orden de campo asc; las sin orden al final por código
+// Sector asignado a una pila (id de sector, o null)
+function sectorCampo(cod){
+  var s=(DB.planes[cod]||{}).sector;
+  return (s==null||s==='')?null:s;
+}
+// Nombre legible del sector de una pila
+function sectorNombre(cod){
+  var sid=sectorCampo(cod);
+  if(!sid) return '';
+  var s=(DB.sectores||[]).find(function(x){return x.id===sid;});
+  return s?s.n:'';
+}
+// Posición del sector en el catálogo (para ordenar sectores entre sí)
+function sectorPos(cod){
+  var sid=sectorCampo(cod);
+  if(!sid) return 9999; // sin sector → al final
+  var i=(DB.sectores||[]).findIndex(function(x){return x.id===sid;});
+  return i<0?9999:i;
+}
+// Comparador: ordena primero por SECTOR (según orden del catálogo),
+// luego por orden de campo dentro del sector, y al final por código.
+// Pilas sin sector o sin orden van al final de su grupo.
 function cmpOrdenCampo(a,b){
+  var sa=sectorPos(a),sb=sectorPos(b);
+  if(sa!==sb) return sa-sb;
   var oa=ordenCampo(a),ob=ordenCampo(b);
   if(oa==null&&ob==null) return String(a).localeCompare(String(b));
   if(oa==null) return 1;
@@ -2356,7 +2418,12 @@ function rOrdenCampo(){
   tbody.innerHTML=act.map(function(p){
     var mon=lastMonData(p.cod),lvv=lv(p.cod);
     var o=ordenCampo(p.cod);
+    var sid=sectorCampo(p.cod);
+    var secOpts='<option value="">— sin sector —</option>'+(DB.sectores||[]).map(function(s){
+      return '<option value="'+s.id+'"'+(sid===s.id?' selected':'')+'>'+s.n+'</option>';
+    }).join('');
     return '<tr id="orow-'+p.cod+'">'
+      +'<td><select class="mini-sel sector-in" id="sec-'+p.cod+'" style="width:110px">'+secOpts+'</select></td>'
       +'<td><input type="number" class="mini-in orden-in" id="ord-'+p.cod+'" value="'+(o!=null?o:'')+'" step="1" min="0" placeholder="—" style="width:70px;text-align:center"></td>'
       +'<td><strong style="color:var(--ms2)">'+p.cod+'</strong></td>'
       +'<td>'+dB(p.fecha,td())+'d</td>'
@@ -2372,11 +2439,14 @@ function guardarOrdenCampo(){
   var n=0;
   act.forEach(function(p){
     var el=document.getElementById('ord-'+p.cod);
-    if(!el)return;
-    var v=el.value.trim();
+    var sel=document.getElementById('sec-'+p.cod);
     DB.planes[p.cod]=DB.planes[p.cod]||{};
-    if(v===''){ DB.planes[p.cod].orden=null; }
-    else { var num=parseFloat(v); if(!isNaN(num)){ DB.planes[p.cod].orden=num; n++; } }
+    if(el){
+      var v=el.value.trim();
+      if(v===''){ DB.planes[p.cod].orden=null; }
+      else { var num=parseFloat(v); if(!isNaN(num)){ DB.planes[p.cod].orden=num; n++; } }
+    }
+    if(sel){ DB.planes[p.cod].sector = sel.value || null; }
   });
   gsGuardarCatalogo('planes',DB.planes);
   sv();
@@ -2460,6 +2530,7 @@ function rKanban(){
           +'<span class="kcard-temp '+tc+'">'+temp+'</span>'
         +'</div>'
         +'<div class="kcard-info">'+dB(p.fecha,td())+'d · '+enm(p)+' · '+nv+' volt.</div>'
+        +(sectorNombre(p.cod)?'<div style="font-size:9.5px;color:var(--am);font-weight:700;margin-top:2px"><i class="ti ti-map-pin" style="font-size:10px"></i> '+sectorNombre(p.cod)+'</div>':'')
         +'<div style="font-size:9.5px;color:var(--ink4);margin-top:3px;line-height:1.8">'
           +'<i class="ti ti-tractor" style="font-size:10px;color:var(--ms3)"></i> '+voltFecha
           +' &nbsp;<i class="ti ti-thermometer" style="font-size:10px;color:var(--sk2)"></i> '+tempFecha
@@ -2573,6 +2644,8 @@ function rHojaDiaria(){
     return '<tr class="dactive" id="drow-'+cod+'">'
       +'<td><input type="checkbox" class="chk-row" checked onchange="toggleDailyRow('+q(cod)+',this.checked)"></td>'
       +'<td><strong style="color:var(--ms2)">'+cod+'</strong></td>'
+      +'<td style="font-size:10px;color:var(--am);font-weight:600">'+(sectorNombre(cod)||'—')+'</td>'
+      +'<td style="font-size:10.5px;color:var(--ink3)">'+dB(p.fecha,td())+'d</td>'
       +'<td style="font-size:10.5px;color:var(--ink3)">'+enm(p)+'</td>'
       +'<td>'+urgLabel(uv,urgDias,'V')+'</td>'
       +'<td><select class="mini-sel" id="dlab-'+cod+'">'+labOpts+'</select></td>'
@@ -2767,6 +2840,7 @@ function rKanbanMon(){
           +'<span class="kcard-temp '+tc+'">'+temp+'</span>'
         +'</div>'
         +'<div class="kcard-info">'+dB(p.fecha,td())+'d · '+enm(p)+' · '+nv+' volt.</div>'
+        +(sectorNombre(p.cod)?'<div style="font-size:9.5px;color:var(--am);font-weight:700;margin-top:2px"><i class="ti ti-map-pin" style="font-size:10px"></i> '+sectorNombre(p.cod)+'</div>':'')
         +'<div style="font-size:9.5px;color:var(--ink4);margin-top:3px;line-height:1.8">'
           +'<i class="ti ti-thermometer" style="font-size:10px;color:var(--sk2)"></i> '+tempFecha
           +' &nbsp;<i class="ti ti-tractor" style="font-size:10px;color:var(--ms3)"></i> '+voltFecha
@@ -2884,6 +2958,7 @@ function rMonTabla(){
     return '<tr class="dactive" id="mrow-'+cod+'">'
       +'<td><input type="checkbox" class="chk-row" checked onchange="toggleMonCheck('+q(cod)+',this.checked)"></td>'
       +'<td><strong style="color:var(--ms2)">'+cod+'</strong></td>'
+      +'<td style="font-size:10px;color:var(--am);font-weight:600">'+(sectorNombre(cod)||'—')+'</td>'
       +'<td>'+dB(p.fecha,td())+'d</td>'
       +'<td style="font-size:10.5px;color:var(--ink3)">'+enm(p)+'</td>'
       +'<td>'+urgLabel(um,urgDias,'M')+'</td>'
@@ -3184,6 +3259,7 @@ function rKanbanSolv(){
           +'<span class="kcard-temp '+tc+'">'+temp+'</span>'
         +'</div>'
         +'<div class="kcard-info">'+edad+'d · '+nv+' volt. · '+enm(p)+'</div>'
+        +(sectorNombre(p.cod)?'<div style="font-size:9.5px;color:var(--am);font-weight:700;margin-top:2px"><i class="ti ti-map-pin" style="font-size:10px"></i> '+sectorNombre(p.cod)+'</div>':'')
         +'<div style="font-size:9.5px;color:var(--ink4);margin-top:2px"><i class="ti ti-thermometer" style="font-size:10px;color:var(--sk2)"></i> Últ. monitoreo: '+(mon?fmt(mon.fecha):'sin registro')+'</div>'
         +'<div style="font-size:9.5px;color:var(--ink4);margin-top:3px">'
           +'<span style="color:'+(critA?'var(--ms)':'inherit')+'">A: '+crit1+' &amp; '+crit2+'</span>'
