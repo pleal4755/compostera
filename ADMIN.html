@@ -1546,7 +1546,7 @@ function rPilas(){
         +'</select></div></td>'
       +'<td>'+fmt(sd.toISOString().split('T')[0])+'</td>'
       +'<td><div style="display:flex;gap:2px">'
-        +'<button class="btn sm" onclick="editP('+q(cod)+')" title="Editar"><i class="ti ti-edit"></i></button>'+'<button class="btn sm tl" onclick="verHistorial('+q(cod)+')" title="Historial labores"><i class="ti ti-history"></i></button>'+'<button class="btn sm" onclick="verHistorialMon('+q(cod)+')" style="background:var(--sk4);border-color:var(--sk3);color:var(--sk)" title="Historial monitoreo"><i class="ti ti-thermometer"></i></button>'
+        +'<button class="btn sm" onclick="editP('+q(cod)+')" title="Editar"><i class="ti ti-edit"></i></button>'+'<button class="btn sm tl" onclick="verHistorial('+q(cod)+')" title="Historial labores"><i class="ti ti-history"></i></button>'+'<button class="btn sm" onclick="verHistorialMon('+q(cod)+')" style="background:var(--sk4);border-color:var(--sk3);color:var(--sk)" title="Historial monitoreo"><i class="ti ti-thermometer"></i></button>'+'<button class="btn sm" onclick="verAuditoria('+q(cod)+')" style="background:var(--am4);border-color:var(--am2);color:var(--am)" title="Auditoría de costos"><i class="ti ti-calculator"></i></button>'
         +'<button class="btn sm tl" onclick="toggleMov('+q(cod)+')" title="Ver movimientos"><i class="ti ti-transfer"></i>'+(nMovs>0?' '+nMovs:'')+'</button>'
         +'<button class="btn sm tl" onclick="openMov('+q(cod)+')" title="Nuevo traslado"><i class="ti ti-plus"></i></button>'
         +'<button class="btn sm dl" onclick="delP('+q(cod)+')" title="Eliminar"><i class="ti ti-trash"></i></button>'
@@ -3576,6 +3576,108 @@ function verHistorial(cod){
     if(el){el.value=cod;rActs();}
   },50);
 }
+// ── Auditoría de costos por pila ──────────────────────────────
+// Desglosa el costo de una pila en sus componentes verificables, usando
+// los datos ya guardados (no toca la base). Cada labor y traslado se
+// muestra con su detalle para poder auditar de dónde sale cada monto.
+function verAuditoria(cod){
+  var p=DB.pilas.find(function(x){return x.cod===cod;});
+  if(!p){toast('Pila no encontrada','er');return;}
+  document.getElementById('mtit').textContent='Auditoría de costos — '+cod;
+  document.getElementById('mbody').innerHTML=auditoriaHTML(p);
+  document.getElementById('mover').classList.add('op');
+}
+function auditoriaHTML(p){
+  var cod=p.cod;
+  var mp=cMP(p), labsDir=cMq(cod), recibido=cRec(cod), cedido=cCed(cod);
+  var bruto=mp+labsDir+recibido;
+  var total=cT(p);
+  var frac=fracEnPila(p);
+  var disp=tmD(p), desp=tmDe(cod), salida=tmSa(cod);
+  var ctmDisp= disp>0 ? total/disp : null;
+
+  // Detalle de cada labor (auditable: fecha, equipo, horas, tarifa, costo)
+  var labs=DB.acts.filter(function(a){return a.pila===cod;})
+    .sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  var filasLab=labs.length?labs.map(function(a){
+    return '<tr>'
+      +'<td style="padding:4px 7px;font-size:11px">'+fmt(a.fecha)+'</td>'
+      +'<td style="padding:4px 7px;font-size:11px">'+(a.obs||a.labor||'Labor')+'</td>'
+      +'<td style="padding:4px 7px;font-size:11px;color:var(--ink3)">'+(a.equipo||'—')+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+(a.horas!=null?fN(a.horas,2):'—')+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+(a.ch?fM(a.ch):'—')+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px"><strong>'+fM(a.cost||0)+'</strong></td>'
+      +'</tr>';
+  }).join(''):'<tr><td colspan="6" style="text-align:center;padding:10px;color:var(--ink4);font-style:italic;font-size:11px">Sin labores registradas.</td></tr>';
+
+  // Detalle de traslados salientes (lo que cede al montículo/otra pila)
+  var sal=DB.movs.filter(function(m){return m.orig===cod;})
+    .sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  var filasSal=sal.length?sal.map(function(m){
+    var destNom=(DB.monts.find(function(x){return x.id===m.dest;})||{}).n || m.dest;
+    return '<tr>'
+      +'<td style="padding:4px 7px;font-size:11px">'+fmt(m.fecha)+'</td>'
+      +'<td style="padding:4px 7px;font-size:11px">'+destNom+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+fN(m.tm||0,2)+' TM</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+(m.pct!=null?fN(m.pct*100,1)+'%':'—')+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px;color:var(--rd2)">−'+fM(ctMov(m))+'</td>'
+      +'</tr>';
+  }).join(''):'';
+
+  var sep='<div style="height:1px;background:var(--bd);margin:14px 0"></div>';
+
+  return '<div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Desglose auditable del costo de la pila. Los costos de labores se recalculan con la tarifa vigente de cada equipo en la fecha de la labor; los traslados cedidos se calculan proporcionalmente a las TM movidas.</div></div>'
+
+    // RESUMEN
+    +'<div class="dgrid g3" style="margin-bottom:6px">'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-leaf"></i> Materia prima</div><div class="cc-v" style="font-size:17px">'+fM(mp)+'</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-tractor"></i> Labores directas</div><div class="cc-v" style="font-size:17px">'+fM(labsDir)+'</div><div class="cc-sub">'+labs.length+' labor'+(labs.length!==1?'es':'')+'</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-arrow-down-left"></i> Costos recibidos</div><div class="cc-v" style="font-size:17px">'+fM(recibido)+'</div></div>'
+    +'</div>'
+    +'<div class="dgrid g3" style="margin-bottom:6px">'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-sigma"></i> Costo acumulado</div><div class="cc-v" style="font-size:17px">'+fM(bruto)+'</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-arrow-up-right"></i> Cedido (traslados)</div><div class="cc-v" style="font-size:17px;color:var(--rd2)">−'+fM(cedido)+'</div></div>'
+    +'<div class="cost-card accent"><div class="cc-l"><i class="ti ti-wallet"></i> Total en la pila</div><div class="cc-v" style="font-size:17px">'+fM(total)+'</div></div>'
+    +'</div>'
+    +'<div class="dgrid g3">'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-stack-2"></i> TM disponibles</div><div class="cc-v" style="font-size:17px">'+fN(disp,2)+'</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-truck"></i> TM despachadas/movidas</div><div class="cc-v" style="font-size:17px">'+fN(desp+salida,2)+'</div></div>'
+    +'<div class="cost-card accent"><div class="cc-l"><i class="ti ti-currency-dollar"></i> Costo por TM disponible</div><div class="cc-v" style="font-size:17px">'+(ctmDisp!=null?fM(ctmDisp):'—')+'</div></div>'
+    +'</div>'
+
+    +sep
+    // DETALLE LABORES
+    +'<div class="dv">Detalle de labores directas</div>'
+    +'<div class="card"><div class="tw"><table style="width:100%">'
+    +'<thead><tr>'
+    +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Fecha</th>'
+    +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Labor</th>'
+    +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Equipo</th>'
+    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Horas</th>'
+    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">$/h</th>'
+    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Costo</th>'
+    +'</tr></thead><tbody>'+filasLab
+    +'<tr style="border-top:2px solid var(--bd)"><td colspan="5" style="padding:5px 7px;text-align:right;font-size:11px"><strong>Total labores directas</strong></td><td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--ms)">'+fM(labsDir)+'</strong></td></tr>'
+    +'</tbody></table></div></div>'
+
+    // DETALLE TRASLADOS (solo si hay)
+    +(sal.length?(
+      '<div class="dv">Detalle de traslados (costo cedido)</div>'
+      +'<div class="card"><div class="tw"><table style="width:100%">'
+      +'<thead><tr>'
+      +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Fecha</th>'
+      +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Destino</th>'
+      +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">TM</th>'
+      +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">% cedido</th>'
+      +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Costo cedido</th>'
+      +'</tr></thead><tbody>'+filasSal
+      +'<tr style="border-top:2px solid var(--bd)"><td colspan="4" style="padding:5px 7px;text-align:right;font-size:11px"><strong>Total cedido</strong></td><td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--rd2)">−'+fM(cedido)+'</strong></td></tr>'
+      +'</tbody></table></div></div>'
+    ):'')
+
+    +'<div class="fa"><button class="btn" onclick="closeM()">Cerrar</button></div>';
+}
+
 function verHistorialMon(cod){
   nav('mon');
   setTimeout(function(){
