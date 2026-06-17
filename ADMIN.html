@@ -376,6 +376,7 @@ td.hi{background:var(--ms6)}
     <div class="ns"><div class="nl">Registros</div>
       <div class="ni" onclick="nav('pilas')"><i class="ti ti-stack-2"></i> Pilas</div>
       <div class="ni" onclick="nav('acts')"><i class="ti ti-settings-2"></i> Actividades</div>
+      <div class="ni" onclick="nav('eficiencia')"><i class="ti ti-gauge"></i> Eficiencia de máquina</div>
       <div class="ni" onclick="nav('mon')"><i class="ti ti-thermometer"></i> Monitoreo</div>
       <div class="ni" onclick="nav('movs')"><i class="ti ti-transfer"></i> Movimientos</div>
       <div class="ni" onclick="nav('desps')"><i class="ti ti-truck"></i> Despachos</div>
@@ -567,6 +568,15 @@ td.hi{background:var(--ms6)}
         <thead><tr><th style="width:120px">Sector</th><th style="width:90px">Orden</th><th>Código</th><th>Edad</th><th>Etapa</th><th>Estado</th><th>Últ. volteo</th><th>Últ. temp.</th></tr></thead>
         <tbody id="orden-tb"></tbody>
       </table></div></div>
+    </div>
+
+    <!-- EFICIENCIA DE MÁQUINA -->
+    <div class="sc" id="sc-eficiencia">
+      <div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Separa el tiempo de la máquina en <strong>volteo efectivo</strong> (trabajo real sobre las pilas) y <strong>traslado entre pilas</strong> (tiempo moviéndose). El traslado se calcula del prorrateo: horómetro del turno menos horas de volteo registradas. Un % de traslado alto sugiere optimizar el orden de campo o agrupar pilas.</div></div>
+      <div class="kr" id="efic-kpis"></div>
+      <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-gauge"></i> Detalle por día y máquina</div></div>
+        <div class="tw"><table><thead><tr><th>Fecha</th><th>Máquina</th><th>Operario</th><th>Pilas</th><th>H. volteo</th><th>H. traslado</th><th>H. total</th><th>% traslado</th><th>$ volteo</th><th>$ traslado</th><th>$ total</th></tr></thead><tbody id="efic-tb"></tbody></table></div>
+      </div>
     </div>
 
     <!-- SOLVITA -->
@@ -979,11 +989,19 @@ function recalcularCostosConProrrateo(){
 
     console.log('[PRORRATEO] ✅', clave, '|', modo, '| asignadas:', g.horasAsign, '| factor:', factor.toFixed(3), '| $/h:', ch);
     g.acts.forEach(function(a){
-      var horasFact = (parseFloat(a.horas)||0) * factor;
+      var hEf = parseFloat(a.horas)||0;          // horas efectivas de volteo (registradas)
+      var horasFact = hEf * factor;               // horas totales con prorrateo
+      var hTras = Math.max(0, horasFact - hEf);   // horas de traslado entre pilas (prorrateadas)
       a.eqId = eq.id;
       a.ch = ch;
       a.cost = Math.round(ch * horasFact * 100) / 100;
       a._horasFact = Math.round(horasFact*100)/100;
+      // Desglose tiempo efectivo vs traslado de máquina
+      a._horasEf = Math.round(hEf*100)/100;
+      a._horasTras = Math.round(hTras*100)/100;
+      a._costoEf = Math.round(ch * hEf * 100)/100;
+      a._costoTras = Math.round(ch * hTras * 100)/100;
+      a._factor = factor;
     });
   });
 }
@@ -1231,15 +1249,15 @@ function nav(sec){
   document.querySelectorAll('.sc').forEach(e=>e.classList.remove('on'));
   const ni=document.querySelector('.ni[onclick="nav(\''+sec+'\')"]');if(ni)ni.classList.add('on');
   const si=document.getElementById('sc-'+sec);if(si)si.classList.add('on');
-  const T={dash:'Dashboard',alert:'Alertas','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',cfg:'Configuración'};
-  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',cfg:'Costos y parámetros'};
+  const T={dash:'Dashboard',alert:'Alertas','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',eficiencia:'Eficiencia de máquina',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',cfg:'Configuración'};
+  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',eficiencia:'Tiempo efectivo de volteo vs. traslado entre pilas, por día y máquina',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',cfg:'Costos y parámetros'};
   document.getElementById('ptit').textContent=T[sec]||sec;
   document.getElementById('psub').textContent=S[sec]||'';
   const hf=['pilas','acts','mon','movs','desps'].includes(sec);
   document.getElementById('bnew').style.display=hf?'':'none';
   const L={pilas:'Nueva pila',acts:'Nueva actividad',mon:'Nuevo monitoreo',movs:'Nuevo traslado',desps:'Nuevo despacho'};
   document.getElementById('blbl').textContent=L[sec]||'Nuevo';
-  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='orden-campo')rOrdenCampo();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();
+  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='orden-campo')rOrdenCampo();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();if(sec==='eficiencia')rEficiencia();
   mpo=null;render();
 }
 
@@ -3569,6 +3587,66 @@ function buildChartHTML(cod, mons, voltSet, voltFechas){
 }
 
 
+// ── Reporte de eficiencia de máquina por día ──────────────────
+// Agrupa las labores por (fecha, máquina, operario) y separa, usando el
+// desglose ya calculado en el recálculo de costos, el tiempo de volteo
+// efectivo del tiempo de traslado entre pilas (prorrateado del horómetro).
+function rEficiencia(){
+  var tb=document.getElementById('efic-tb');if(!tb)return;
+  // Agrupar actividades de volteo (las que tienen equipo y horas) por día+equipo+operario
+  var grupos={};
+  (DB.acts||[]).forEach(function(a){
+    if(!a.equipo || !(parseFloat(a.horas)>0)) return;
+    var f=String(a.fecha||'').substring(0,10);
+    var clave=f+'|'+a.equipo+'|'+(a.op||'');
+    if(!grupos[clave]) grupos[clave]={fecha:f,equipo:a.equipo,op:a.op||'—',pilas:{},hEf:0,hTras:0,cEf:0,cTras:0};
+    var g=grupos[clave];
+    g.pilas[a.pila]=true;
+    g.hEf  += (a._horasEf!=null?a._horasEf:(parseFloat(a.horas)||0));
+    g.hTras+= (a._horasTras||0);
+    g.cEf  += (a._costoEf||0);
+    g.cTras+= (a._costoTras||0);
+  });
+  var filas=Object.keys(grupos).map(function(k){return grupos[k];})
+    .sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');}); // más reciente primero
+
+  // KPIs globales
+  var totEf=filas.reduce(function(s,g){return s+g.hEf;},0);
+  var totTras=filas.reduce(function(s,g){return s+g.hTras;},0);
+  var totCEf=filas.reduce(function(s,g){return s+g.cEf;},0);
+  var totCTras=filas.reduce(function(s,g){return s+g.cTras;},0);
+  var pctTras=(totEf+totTras)>0?(totTras/(totEf+totTras)*100):0;
+  document.getElementById('efic-kpis').innerHTML=
+    '<div class="kpi ok"><div class="kl"><i class="ti ti-rotate-clockwise"></i> Horas volteo efectivo</div><div class="kv">'+fN(totEf,1)+' <span class="ku">h</span></div></div>'
+    +'<div class="kpi wn"><div class="kl"><i class="ti ti-arrows-move"></i> Horas traslado máquina</div><div class="kv">'+fN(totTras,1)+' <span class="ku">h</span></div></div>'
+    +'<div class="kpi '+(pctTras>30?'dn':pctTras>20?'wn':'ok')+'"><div class="kl"><i class="ti ti-percentage"></i> % en traslado</div><div class="kv">'+fN(pctTras,1)+'%</div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-currency-dollar"></i> Costo en traslado</div><div class="kv" style="font-size:15px">'+fM(totCTras)+'</div></div>';
+
+  if(!filas.length){
+    tb.innerHTML='<tr><td colspan="11"><div class="em"><i class="ti ti-gauge"></i>Sin labores de máquina registradas.</div></td></tr>';
+    return;
+  }
+  tb.innerHTML=filas.map(function(g){
+    var nPilas=Object.keys(g.pilas).length;
+    var hTot=g.hEf+g.hTras;
+    var pct=hTot>0?(g.hTras/hTot*100):0;
+    var pctColor=pct>30?'var(--rd2)':pct>20?'var(--am)':'var(--ms)';
+    return '<tr>'
+      +'<td>'+fmt(g.fecha)+'</td>'
+      +'<td><strong style="color:var(--ms2)">'+g.equipo+'</strong></td>'
+      +'<td style="font-size:11px;color:var(--ink3)">'+g.op+'</td>'
+      +'<td style="text-align:right">'+nPilas+'</td>'
+      +'<td style="text-align:right">'+fN(g.hEf,2)+'</td>'
+      +'<td style="text-align:right;color:var(--am)">'+fN(g.hTras,2)+'</td>'
+      +'<td style="text-align:right"><strong>'+fN(hTot,2)+'</strong></td>'
+      +'<td style="text-align:right;color:'+pctColor+';font-weight:700">'+fN(pct,1)+'%</td>'
+      +'<td style="text-align:right">'+fM(g.cEf)+'</td>'
+      +'<td style="text-align:right;color:var(--am)">'+fM(g.cTras)+'</td>'
+      +'<td style="text-align:right"><strong>'+fM(g.cEf+g.cTras)+'</strong></td>'
+      +'</tr>';
+  }).join('');
+}
+
 function verHistorial(cod){
   nav('acts');
   setTimeout(function(){
@@ -3600,15 +3678,26 @@ function auditoriaHTML(p){
   var labs=DB.acts.filter(function(a){return a.pila===cod;})
     .sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
   var filasLab=labs.length?labs.map(function(a){
+    var hEf=a._horasEf!=null?a._horasEf:(parseFloat(a.horas)||0);
+    var hTras=a._horasTras!=null?a._horasTras:0;
+    var cEf=a._costoEf!=null?a._costoEf:0;
+    var cTras=a._costoTras!=null?a._costoTras:0;
     return '<tr>'
       +'<td style="padding:4px 7px;font-size:11px">'+fmt(a.fecha)+'</td>'
       +'<td style="padding:4px 7px;font-size:11px">'+(a.obs||a.labor||'Labor')+'</td>'
       +'<td style="padding:4px 7px;font-size:11px;color:var(--ink3)">'+(a.equipo||'—')+'</td>'
-      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+(a.horas!=null?fN(a.horas,2):'—')+'</td>'
-      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+(a.ch?fM(a.ch):'—')+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+fN(hEf,2)+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px;color:var(--am)">'+fN(hTras,2)+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px;color:var(--ink3)">'+(a.ch?fM(a.ch):'—')+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+fM(cEf)+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px;color:var(--am)">'+fM(cTras)+'</td>'
       +'<td style="padding:4px 7px;text-align:right;font-size:11px"><strong>'+fM(a.cost||0)+'</strong></td>'
       +'</tr>';
-  }).join(''):'<tr><td colspan="6" style="text-align:center;padding:10px;color:var(--ink4);font-style:italic;font-size:11px">Sin labores registradas.</td></tr>';
+  }).join(''):'<tr><td colspan="9" style="text-align:center;padding:10px;color:var(--ink4);font-style:italic;font-size:11px">Sin labores registradas.</td></tr>';
+  var totHEf=labs.reduce(function(s,a){return s+(a._horasEf!=null?a._horasEf:(parseFloat(a.horas)||0));},0);
+  var totHTras=labs.reduce(function(s,a){return s+(a._horasTras||0);},0);
+  var totCEf=labs.reduce(function(s,a){return s+(a._costoEf||0);},0);
+  var totCTras=labs.reduce(function(s,a){return s+(a._costoTras||0);},0);
 
   // Detalle de traslados salientes (lo que cede al montículo/otra pila)
   var sal=DB.movs.filter(function(m){return m.orig===cod;})
@@ -3621,8 +3710,11 @@ function auditoriaHTML(p){
       +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+fN(m.tm||0,2)+' TM</td>'
       +'<td style="padding:4px 7px;text-align:right;font-size:11px">'+(m.pct!=null?fN(m.pct*100,1)+'%':'—')+'</td>'
       +'<td style="padding:4px 7px;text-align:right;font-size:11px;color:var(--rd2)">−'+fM(ctMov(m))+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px;color:var(--ink3)">'+fM(m.costEq||0)+'</td>'
+      +'<td style="padding:4px 7px;text-align:right;font-size:11px;color:var(--ink3)">'+fM(m.costCamion||0)+'</td>'
       +'</tr>';
   }).join(''):'';
+  var totalEqCam=sal.reduce(function(s,m){return s+(m.costEq||0)+(m.costCamion||0);},0);
 
   var sep='<div style="height:1px;background:var(--bd);margin:14px 0"></div>';
 
@@ -3633,6 +3725,12 @@ function auditoriaHTML(p){
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-leaf"></i> Materia prima</div><div class="cc-v" style="font-size:17px">'+fM(mp)+'</div></div>'
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-tractor"></i> Labores directas</div><div class="cc-v" style="font-size:17px">'+fM(labsDir)+'</div><div class="cc-sub">'+labs.length+' labor'+(labs.length!==1?'es':'')+'</div></div>'
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-arrow-down-left"></i> Costos recibidos</div><div class="cc-v" style="font-size:17px">'+fM(recibido)+'</div></div>'
+    +'</div>'
+    // Desglose efectivo vs traslado de la máquina
+    +'<div class="dgrid g3" style="margin-bottom:6px">'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-rotate-clockwise"></i> Tiempo efectivo volteo</div><div class="cc-v" style="font-size:17px">'+fN(totHEf,2)+' h</div><div class="cc-sub">'+fM(totCEf)+'</div></div>'
+    +'<div class="cost-card"><div class="cc-l" style="color:var(--am)"><i class="ti ti-arrows-move"></i> Tiempo traslado máquina</div><div class="cc-v" style="font-size:17px;color:var(--am)">'+fN(totHTras,2)+' h</div><div class="cc-sub">'+fM(totCTras)+'</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-percentage"></i> % traslado del tiempo</div><div class="cc-v" style="font-size:17px">'+((totHEf+totHTras)>0?fN(totHTras/(totHEf+totHTras)*100,1):'0')+'%</div><div class="cc-sub">de máquina en mover</div></div>'
     +'</div>'
     +'<div class="dgrid g3" style="margin-bottom:6px">'
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-sigma"></i> Costo acumulado</div><div class="cc-v" style="font-size:17px">'+fM(bruto)+'</div></div>'
@@ -3648,21 +3746,32 @@ function auditoriaHTML(p){
     +sep
     // DETALLE LABORES
     +'<div class="dv">Detalle de labores directas</div>'
+    +'<div style="font-size:10.5px;color:var(--ink4);margin:-4px 0 8px"><strong>H. efect.</strong> = tiempo de volteo real · <strong style="color:var(--am)">H. traslado</strong> = tiempo de la máquina moviéndose entre pilas (prorrateado del día).</div>'
     +'<div class="card"><div class="tw"><table style="width:100%">'
     +'<thead><tr>'
     +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Fecha</th>'
     +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Labor</th>'
     +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Equipo</th>'
-    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Horas</th>'
+    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">H. efect.</th>'
+    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--am)">H. traslado</th>'
     +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">$/h</th>'
+    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">$ efect.</th>'
+    +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--am)">$ traslado</th>'
     +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Costo</th>'
     +'</tr></thead><tbody>'+filasLab
-    +'<tr style="border-top:2px solid var(--bd)"><td colspan="5" style="padding:5px 7px;text-align:right;font-size:11px"><strong>Total labores directas</strong></td><td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--ms)">'+fM(labsDir)+'</strong></td></tr>'
+    +'<tr style="border-top:2px solid var(--bd)"><td colspan="3" style="padding:5px 7px;text-align:right;font-size:11px"><strong>Totales</strong></td>'
+    +'<td style="padding:5px 7px;text-align:right;font-size:11px"><strong>'+fN(totHEf,2)+'</strong></td>'
+    +'<td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--am)">'+fN(totHTras,2)+'</strong></td>'
+    +'<td></td>'
+    +'<td style="padding:5px 7px;text-align:right;font-size:11px"><strong>'+fM(totCEf)+'</strong></td>'
+    +'<td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--am)">'+fM(totCTras)+'</strong></td>'
+    +'<td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--ms)">'+fM(labsDir)+'</strong></td></tr>'
     +'</tbody></table></div></div>'
 
     // DETALLE TRASLADOS (solo si hay)
     +(sal.length?(
-      '<div class="dv">Detalle de traslados (costo cedido)</div>'
+      '<div class="dv">Detalle de traslados (costo cedido + costo de mover)</div>'
+      +'<div style="font-size:10.5px;color:var(--ink4);margin:-4px 0 8px">El costo cedido y el de mover (equipo + camión) se cargan al montículo destino, no a esta pila.</div>'
       +'<div class="card"><div class="tw"><table style="width:100%">'
       +'<thead><tr>'
       +'<th style="text-align:left;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Fecha</th>'
@@ -3670,8 +3779,10 @@ function auditoriaHTML(p){
       +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">TM</th>'
       +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">% cedido</th>'
       +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Costo cedido</th>'
+      +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Equipo carga</th>'
+      +'<th style="text-align:right;padding:4px 7px;font-size:9.5px;text-transform:uppercase;color:var(--ink4)">Camión</th>'
       +'</tr></thead><tbody>'+filasSal
-      +'<tr style="border-top:2px solid var(--bd)"><td colspan="4" style="padding:5px 7px;text-align:right;font-size:11px"><strong>Total cedido</strong></td><td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--rd2)">−'+fM(cedido)+'</strong></td></tr>'
+      +'<tr style="border-top:2px solid var(--bd)"><td colspan="4" style="padding:5px 7px;text-align:right;font-size:11px"><strong>Totales</strong></td><td style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--rd2)">−'+fM(cedido)+'</strong></td><td colspan="2" style="padding:5px 7px;text-align:right;font-size:11px"><strong style="color:var(--ink3)">'+fM(totalEqCam)+' mover</strong></td></tr>'
       +'</tbody></table></div></div>'
     ):'')
 
