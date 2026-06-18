@@ -1631,7 +1631,7 @@ function rMons(){
       +'<td>'+tbadge(m.prom)+'</td>'
       +'<td>'+ha+'</td>'
       +'<td style="max-width:100px;white-space:normal;font-size:10.5px">'+(m.estado||'—')+'</td>'
-      +'<td><button class="btn sm dl" onclick="delMn('+q(m.id)+')"><i class="ti ti-trash"></i></button></td>'
+      +'<td><button class="btn sm" onclick="editMon('+q(m.id)+')" title="Editar"><i class="ti ti-edit"></i></button> <button class="btn sm dl" onclick="delMn('+q(m.id)+')" title="Eliminar"><i class="ti ti-trash"></i></button></td>'
       +'</tr>';
   }).join('');
 }
@@ -1697,6 +1697,69 @@ function rDesps(){
 function delP(cod){if(!confirm('¿Eliminar pila '+cod+'?'))return;var movsBorrar=DB.movs.filter(function(m){return m.orig===cod||m.dest===cod;});DB.pilas=DB.pilas.filter(function(p){return p.cod!==cod;});delete DB.planes[cod];DB.movs=DB.movs.filter(function(m){return m.orig!==cod&&m.dest!==cod;});gsBorrar('pilas','cod',cod);movsBorrar.forEach(function(m){gsBorrar('movs','id',m.id);});gsGuardarCatalogo('planes',DB.planes);gsInstalarSync();sv();render();toast('Pila eliminada');}
 function delA(id){if(!confirm('¿Eliminar?'))return;DB.acts=DB.acts.filter(function(a){return a.id!==id;});gsBorrar('acts','id',id);gsInstalarSync();sv();render();}
 function delMn(id){if(!confirm('¿Eliminar?'))return;DB.mons=DB.mons.filter(function(m){return m.id!==id;});gsBorrar('mons','id',id);gsInstalarSync();sv();render();}
+// ── Editar un registro de monitoreo ───────────────────────────
+var editMonId=null;
+function editMon(id){
+  var m=DB.mons.find(function(x){return x.id===id;});
+  if(!m){toast('Registro no encontrado','er');return;}
+  editMonId=id;
+  document.getElementById('mtit').textContent='Editar monitoreo — '+m.pila;
+  document.getElementById('mbody').innerHTML=
+    '<div class="ap ap-i" style="margin-bottom:10px"><i class="ti ti-info-circle"></i><div>Corrija los valores. El promedio se recalcula automáticamente con las temperaturas que tengan dato.</div></div>'
+    +'<div class="fg2">'
+    +'<div class="fg"><label>Pila</label><input type="text" value="'+m.pila+'" disabled style="background:var(--cr2);color:var(--ink3)"></div>'
+    +'<div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="em-fecha" value="'+String(m.fecha).substring(0,10)+'" max="'+td()+'"></div>'
+    +'</div>'
+    +'<div class="ttrio" style="margin-top:4px">'
+    +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 1</label><input type="number" id="em-t1" step="0.5" min="32" max="250" value="'+(m.t1!=null?m.t1:'')+'" oninput="emProm()"></div>'
+    +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 2</label><input type="number" id="em-t2" step="0.5" min="32" max="250" value="'+(m.t2!=null?m.t2:'')+'" oninput="emProm()"></div>'
+    +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 3</label><input type="number" id="em-t3" step="0.5" min="32" max="250" value="'+(m.t3!=null?m.t3:'')+'" oninput="emProm()"></div>'
+    +'<div class="fg" style="gap:3px"><label style="font-size:10px">Punto 4</label><input type="number" id="em-t4" step="0.5" min="32" max="250" value="'+(m.t4!=null?m.t4:'')+'" oninput="emProm()"></div>'
+    +'<div class="fg" style="gap:3px"><label style="font-size:10px">Prom.</label><div id="em-prom" style="font-weight:700;color:var(--ms);padding:6px 0">'+(m.prom!=null?fN(m.prom,1)+'°F':'—')+'</div></div>'
+    +'</div>'
+    +'<div class="fg2" style="margin-top:4px">'
+    +'<div class="fg"><label>Humedad (1–5)</label><input type="number" id="em-hum" step="1" min="1" max="5" value="'+(m.hum!=null?m.hum:'')+'" placeholder="1=seco · 5=húmedo"></div>'
+    +'<div class="fg"><label>Estado físico (1–5)</label><input type="number" id="em-est" step="1" min="1" max="5" value="'+(m.estado!=null&&m.estado!==''?m.estado:'')+'" placeholder="código 1–5"></div>'
+    +'</div>'
+    +'<div class="fg full"><label>Obs.</label><textarea id="em-obs">'+(m.obs||'')+'</textarea></div>'
+    +'<div class="fa"><button class="btn" onclick="closeM()">Cancelar</button>'
+    +'<button class="btn pr" onclick="guardarEditMon()"><i class="ti ti-check"></i> Guardar cambios</button></div>';
+  document.getElementById('mover').classList.add('op');
+}
+function emProm(){
+  var vals=['em-t1','em-t2','em-t3','em-t4'].map(function(id){
+    var el=document.getElementById(id);return el?parseFloat(el.value):NaN;
+  }).filter(function(v){return !isNaN(v);});
+  var box=document.getElementById('em-prom');
+  if(!box)return;
+  if(!vals.length){box.textContent='—';return;}
+  var p=vals.reduce(function(s,v){return s+v;},0)/vals.length;
+  box.textContent=fN(p,1)+'°F';
+}
+function guardarEditMon(){
+  var m=DB.mons.find(function(x){return x.id===editMonId;});
+  if(!m){toast('Registro no encontrado','er');return;}
+  var fecha=document.getElementById('em-fecha').value;
+  if(!fecha){toast('La fecha es obligatoria','wn');return;}
+  var t1=parseFloat(document.getElementById('em-t1').value);
+  var t2=parseFloat(document.getElementById('em-t2').value);
+  var t3=parseFloat(document.getElementById('em-t3').value);
+  var t4=parseFloat(document.getElementById('em-t4').value);
+  var vals=[t1,t2,t3,t4].filter(function(v){return !isNaN(v);});
+  if(!vals.length){toast('Ingrese al menos una temperatura','wn');return;}
+  var prom=Math.round(vals.reduce(function(s,v){return s+v;},0)/vals.length*10)/10;
+  var hum=parseInt(document.getElementById('em-hum').value);
+  var est=parseInt(document.getElementById('em-est').value);
+  m.fecha=fecha;
+  m.t1=isNaN(t1)?null:t1; m.t2=isNaN(t2)?null:t2; m.t3=isNaN(t3)?null:t3; m.t4=isNaN(t4)?null:t4;
+  m.prom=prom;
+  m.hum=isNaN(hum)?null:hum;
+  m.estado=isNaN(est)?null:est;
+  m.obs=document.getElementById('em-obs').value;
+  gsEditar('mons','id',m.id,clonReg(m));
+  sv();closeM();render();
+  toast('Monitoreo actualizado');
+}
 function delMv(id){if(!confirm('¿Eliminar?'))return;DB.movs=DB.movs.filter(function(m){return m.id!==id;});gsBorrar('movs','id',id);gsInstalarSync();sv();render();}
 function delDs(id){if(!confirm('¿Eliminar?'))return;DB.desps=DB.desps.filter(function(d){return d.id!==id;});gsBorrar('desps','id',id);gsInstalarSync();sv();render();}
 
