@@ -573,6 +573,22 @@ td.hi{background:var(--ms6)}
     <!-- EFICIENCIA DE MÁQUINA -->
     <div class="sc" id="sc-eficiencia">
       <div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Separa el tiempo de la máquina en <strong>volteo efectivo</strong> (trabajo real sobre las pilas) y <strong>traslado entre pilas</strong> (tiempo moviéndose). El traslado se calcula del prorrateo: horómetro del turno menos horas de volteo registradas. Un % de traslado alto sugiere optimizar el orden de campo o agrupar pilas.</div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--ink4);font-weight:600">Período:</span>
+        <button class="btn sm" id="efic-btn-dia" onclick="eficPeriodo('dia')">Hoy</button>
+        <button class="btn sm" id="efic-btn-sem" onclick="eficPeriodo('semana')">Esta semana</button>
+        <button class="btn sm" id="efic-btn-mes" onclick="eficPeriodo('mes')">Este mes</button>
+        <button class="btn sm" id="efic-btn-todo" onclick="eficPeriodo('todo')">Todo</button>
+        <span style="font-size:11px;color:var(--ink4);margin-left:8px">Rango:</span>
+        <input type="date" id="efic-desde" onchange="eficPeriodo('rango')" style="font-size:11px;padding:4px 7px;border:1px solid var(--bd2);border-radius:6px;background:#fff;color:var(--ink)">
+        <span style="font-size:11px;color:var(--ink4)">a</span>
+        <input type="date" id="efic-hasta" onchange="eficPeriodo('rango')" style="font-size:11px;padding:4px 7px;border:1px solid var(--bd2);border-radius:6px;background:#fff;color:var(--ink)">
+        <span id="efic-rango-lbl" style="font-size:11px;color:var(--ms2);font-style:italic;margin-left:6px"></span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--ink4);font-weight:600">Máquina:</span>
+        <select id="efic-maquina" onchange="rEficiencia()" style="font-size:12px;padding:4px 9px;border:1px solid var(--bd2);border-radius:6px;background:#fff;color:var(--ink);min-width:160px"></select>
+      </div>
       <div class="kr" id="efic-kpis"></div>
       <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-gauge"></i> Detalle por día y máquina</div></div>
         <div class="tw"><table><thead><tr><th>Fecha</th><th>Máquina</th><th>Operario</th><th>Pilas</th><th>H. volteo</th><th>H. traslado</th><th>H. total</th><th>% traslado</th><th>$ volteo</th><th>$ traslado</th><th>$ total</th></tr></thead><tbody id="efic-tb"></tbody></table></div>
@@ -3654,13 +3670,73 @@ function buildChartHTML(cod, mons, voltSet, voltFechas){
 // Agrupa las labores por (fecha, máquina, operario) y separa, usando el
 // desglose ya calculado en el recálculo de costos, el tiempo de volteo
 // efectivo del tiempo de traslado entre pilas (prorrateado del horómetro).
+// Estado del filtro de período del reporte de eficiencia
+var eficRango={desde:undefined,hasta:undefined};
+// Aplica un período al reporte. modo: dia|semana|mes|todo|rango.
+// Si silent=true, solo fija el rango sin re-renderizar (uso interno inicial).
+function eficPeriodo(modo,silent){
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  function iso(d){return d.toISOString().split('T')[0];}
+  if(modo==='dia'){
+    eficRango.desde=td(); eficRango.hasta=td();
+  } else if(modo==='semana'){
+    // Semana en curso, lunes a domingo
+    var dow=(hoy.getDay()+6)%7; // 0=lunes
+    var lun=new Date(hoy); lun.setDate(hoy.getDate()-dow);
+    var dom=new Date(lun); dom.setDate(lun.getDate()+6);
+    eficRango.desde=iso(lun); eficRango.hasta=iso(dom);
+  } else if(modo==='mes'){
+    var ini=new Date(hoy.getFullYear(),hoy.getMonth(),1);
+    var fin=new Date(hoy.getFullYear(),hoy.getMonth()+1,0);
+    eficRango.desde=iso(ini); eficRango.hasta=iso(fin);
+  } else if(modo==='todo'){
+    eficRango.desde=null; eficRango.hasta=null;
+  } else if(modo==='rango'){
+    var de=document.getElementById('efic-desde'), ha=document.getElementById('efic-hasta');
+    eficRango.desde=de&&de.value?de.value:null;
+    eficRango.hasta=ha&&ha.value?ha.value:null;
+  }
+  // Reflejar en los inputs de fecha (salvo cuando el usuario los editó directo)
+  if(modo!=='rango'){
+    var de2=document.getElementById('efic-desde'), ha2=document.getElementById('efic-hasta');
+    if(de2) de2.value=eficRango.desde||'';
+    if(ha2) ha2.value=eficRango.hasta||'';
+  }
+  // Etiqueta de rango activo
+  var lbl=document.getElementById('efic-rango-lbl');
+  if(lbl){
+    if(!eficRango.desde&&!eficRango.hasta) lbl.textContent='(todos los registros)';
+    else if(eficRango.desde===eficRango.hasta) lbl.textContent='('+fmt(eficRango.desde)+')';
+    else lbl.textContent='('+(eficRango.desde?fmt(eficRango.desde):'inicio')+' — '+(eficRango.hasta?fmt(eficRango.hasta):'hoy')+')';
+  }
+  if(!silent) rEficiencia();
+}
+
 function rEficiencia(){
   var tb=document.getElementById('efic-tb');if(!tb)return;
+  // Rango de fechas activo (si está definido). Por defecto: mes en curso.
+  if(eficRango.desde===undefined){ eficPeriodo('mes',true); }
+  var d0=eficRango.desde, d1=eficRango.hasta;
+  // Llenar el selector de máquinas (equipos que tienen labores registradas)
+  var selMaq=document.getElementById('efic-maquina');
+  if(selMaq && !selMaq.dataset.lleno){
+    var equiposUsados={};
+    (DB.acts||[]).forEach(function(a){ if(a.equipo) equiposUsados[a.equipo]=true; });
+    var ops='<option value="">Todas las máquinas</option>'+Object.keys(equiposUsados).sort().map(function(e){
+      return '<option value="'+e+'">'+e+'</option>';
+    }).join('');
+    selMaq.innerHTML=ops;
+    selMaq.dataset.lleno='1';
+  }
+  var maqFiltro=selMaq?selMaq.value:'';
   // Agrupar actividades de volteo (las que tienen equipo y horas) por día+equipo+operario
   var grupos={};
   (DB.acts||[]).forEach(function(a){
     if(!a.equipo || !(parseFloat(a.horas)>0)) return;
+    if(maqFiltro && a.equipo!==maqFiltro) return;   // filtro por máquina
     var f=String(a.fecha||'').substring(0,10);
+    if(d0 && f<d0) return;   // fuera del rango (antes)
+    if(d1 && f>d1) return;   // fuera del rango (después)
     var clave=f+'|'+a.equipo+'|'+(a.op||'');
     if(!grupos[clave]) grupos[clave]={fecha:f,equipo:a.equipo,op:a.op||'—',pilas:{},hEf:0,hTras:0,cEf:0,cTras:0};
     var g=grupos[clave];
