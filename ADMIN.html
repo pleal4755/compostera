@@ -381,6 +381,9 @@ td.hi{background:var(--ms6)}
       <div class="ni" onclick="nav('movs')"><i class="ti ti-transfer"></i> Movimientos</div>
       <div class="ni" onclick="nav('desps')"><i class="ti ti-truck"></i> Despachos</div>
     </div>
+    <div class="ns"><div class="nl">Reportería</div>
+      <div class="ni" onclick="nav('reportes')"><i class="ti ti-report"></i> Reportería</div>
+    </div>
     <div class="ns"><div class="nl">Configuración</div>
       <div class="ni" onclick="nav('cfg')"><i class="ti ti-adjustments-horizontal"></i> Parámetros</div>
     </div>
@@ -592,6 +595,87 @@ td.hi{background:var(--ms6)}
       <div class="kr" id="efic-kpis"></div>
       <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-gauge"></i> Detalle por día y máquina</div></div>
         <div class="tw"><table><thead><tr><th>Fecha</th><th>Máquina</th><th>Operario</th><th>Pilas</th><th>H. volteo</th><th>H. traslado</th><th>H. total</th><th>% traslado</th><th>$ volteo</th><th>$ traslado</th><th>$ total</th></tr></thead><tbody id="efic-tb"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- REPORTERÍA -->
+    <div class="sc" id="sc-reportes">
+      <!-- Sub-pestañas -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn sm on" id="rep-tab-labores" onclick="repTab('labores')"><i class="ti ti-clipboard-list"></i> Labores</button>
+        <button class="btn sm" id="rep-tab-maquinaria" onclick="repTab('maquinaria')"><i class="ti ti-gauge"></i> Maquinaria</button>
+        <button class="btn sm" id="rep-tab-inventario" onclick="repTab('inventario')"><i class="ti ti-building-warehouse"></i> Inventario para venta</button>
+        <button class="btn sm" id="rep-tab-temporada" onclick="repTab('temporada')"><i class="ti ti-rotate-clockwise"></i> Volteos por temporada</button>
+      </div>
+
+      <!-- Barra de período (solo reportes de flujo: labores / maquinaria) -->
+      <div id="rep-periodo-bar" style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--ink4);font-weight:600">Período:</span>
+        <button class="btn sm" id="rep-btn-dia" onclick="repPeriodo('dia')">Hoy</button>
+        <button class="btn sm" id="rep-btn-sem" onclick="repPeriodo('semana')">Esta semana</button>
+        <button class="btn sm" id="rep-btn-mes" onclick="repPeriodo('mes')">Este mes</button>
+        <button class="btn sm" id="rep-btn-todo" onclick="repPeriodo('todo')">Todo</button>
+        <span style="font-size:11px;color:var(--ink4);margin-left:8px">Rango:</span>
+        <input type="date" id="rep-desde" onchange="repPeriodo('rango')" style="font-size:11px;padding:4px 7px;border:1px solid var(--bd2);border-radius:6px;background:#fff;color:var(--ink)">
+        <span style="font-size:11px;color:var(--ink4)">a</span>
+        <input type="date" id="rep-hasta" onchange="repPeriodo('rango')" style="font-size:11px;padding:4px 7px;border:1px solid var(--bd2);border-radius:6px;background:#fff;color:var(--ink)">
+        <span id="rep-rango-lbl" style="font-size:11px;color:var(--ms2);font-style:italic;margin-left:6px"></span>
+      </div>
+
+      <!-- Reporte: Labores -->
+      <div id="rep-pane-labores">
+        <div class="kr" id="rep-lab-kpis"></div>
+        <div class="card" style="margin-bottom:12px"><div class="ch"><div class="ct2"><i class="ti ti-list-check"></i> Resumen por tipo de labor</div></div>
+          <div class="tw"><table><thead><tr><th>Labor</th><th>Categoría</th><th style="text-align:right">Cantidad</th><th style="text-align:right">Horas</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-lab-tipo-tb"></tbody></table></div>
+        </div>
+        <div class="card" style="margin-bottom:12px"><div class="ch"><div class="ct2"><i class="ti ti-users"></i> Resumen por operario</div></div>
+          <div class="tw"><table><thead><tr><th>Operario</th><th style="text-align:right">Labores</th><th style="text-align:right">Horas</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-lab-op-tb"></tbody></table></div>
+        </div>
+        <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-clipboard-list"></i> Detalle de labores</div></div>
+          <div class="tw"><table><thead><tr><th>#</th><th>Pila</th><th>Fecha</th><th>Labor</th><th>Equipo</th><th style="text-align:right">Horas</th><th style="text-align:right">Costo</th><th>Operario</th></tr></thead><tbody id="rep-lab-det-tb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Reporte: Maquinaria -->
+      <div id="rep-pane-maquinaria" style="display:none">
+        <div class="kr" id="rep-maq-kpis"></div>
+        <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-gauge"></i> Horas por máquina <span id="rep-maq-sub" style="font-size:11px;color:var(--ink4);font-weight:normal;margin-left:6px"></span></div></div>
+          <div class="tw"><table><thead><tr><th>Máquina</th><th style="text-align:right">Días</th><th style="text-align:right">Pilas</th><th style="text-align:right">H. volteo</th><th style="text-align:right">H. traslado</th><th style="text-align:right">H. total</th><th style="text-align:right">% traslado</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-maq-tb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Reporte: Inventario disponible para venta -->
+      <div id="rep-pane-inventario" style="display:none">
+        <div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Inventario disponible para venta <strong id="rep-inv-fecha"></strong>: pilas con <strong>SOLVITA Aprobado</strong> y saldo, más el producto terminado en montículos.</div></div>
+        <div class="kr" id="rep-inv-kpis"></div>
+        <div class="card" style="margin-bottom:12px"><div class="ch"><div class="ct2"><i class="ti ti-stack-2"></i> Pilas con SOLVITA Aprobado</div></div>
+          <div class="tw"><table><thead><tr><th>Código</th><th>Sector</th><th style="text-align:right">Edad</th><th style="text-align:right">TM disp.</th><th style="text-align:right">$/TM</th><th style="text-align:right">Costo total</th></tr></thead><tbody id="rep-inv-pilas-tb"></tbody></table></div>
+        </div>
+        <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-building-warehouse"></i> Montículos (producto terminado)</div></div>
+          <div class="tw"><table><thead><tr><th>Montículo</th><th style="text-align:right">TM disp.</th><th style="text-align:right">$/TM</th><th style="text-align:right">Costo total</th></tr></thead><tbody id="rep-inv-monts-tb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Reporte: Volteos por temporada -->
+      <div id="rep-pane-temporada" style="display:none">
+        <div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Total de volteos (incluye volteos y riegos) por pila, agrupados por <strong>temporada</strong> de recepción de materia prima (la temporada arranca en noviembre; ej.: nov-2025 a oct-2026 = "25-26"). Cuentan las pilas con análisis SOLVITA registrado; con la casilla activada se suman también las que ya fueron despachadas o trasladadas a montículo aunque no tengan SOLVITA.</div></div>
+        <div class="card" style="margin-bottom:12px"><div class="ch"><div class="ct2"><i class="ti ti-calendar-stats"></i> Resumen por temporada</div></div>
+          <div class="tw"><table><thead><tr><th>Temporada</th><th style="text-align:right">Pilas</th><th style="text-align:right">Volteos totales</th><th style="text-align:right">Prom. volteos/pila</th><th style="text-align:right">TM frescas</th></tr></thead><tbody id="rep-temp-resumen-tb"></tbody></table></div>
+        </div>
+        <div style="display:flex;gap:14px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:11px;color:var(--ink4);font-weight:600">Temporada:</span>
+            <select id="rep-temp-sel" onchange="rRepTemporada()" style="font-size:12px;padding:4px 9px;border:1px solid var(--bd2);border-radius:6px;background:#fff;color:var(--ink);min-width:140px"></select>
+          </div>
+          <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--ink3);cursor:pointer">
+            <input type="checkbox" id="rep-temp-incluir-mov" checked onchange="rRepTemporada()">
+            Incluir pilas despachadas / trasladadas a montículo (aunque no tengan SOLVITA registrado)
+          </label>
+        </div>
+        <div class="kr" id="rep-temp-kpis"></div>
+        <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-stack-2"></i> Detalle de pilas — <span id="rep-temp-det-lbl"></span></div></div>
+          <div class="tw"><table><thead><tr><th>Código</th><th>Formación</th><th>Estado</th><th style="text-align:right">TM frescas</th><th style="text-align:right">TM disp.</th><th style="text-align:right">Volteos</th></tr></thead><tbody id="rep-temp-det-tb"></tbody></table></div>
+        </div>
       </div>
     </div>
 
@@ -1119,7 +1203,14 @@ function tmRB(p){return p.tmc!=null?p.tmc:tmF(p)*(DB.cfg.red||0.333);}
 function tmEn(c){return DB.movs.filter(m=>m.dest===c).reduce((s,m)=>s+(m.tm||0),0);}
 function tmSa(c){return DB.movs.filter(m=>m.orig===c).reduce((s,m)=>s+(m.tm||0),0);}
 function tmDe(c){return DB.desps.filter(d=>d.pila===c).reduce((s,d)=>s+(d.tm||0),0);}
-function tmD(p){return Math.max(0,tmRB(p)+tmEn(p.cod)-tmSa(p.cod)-tmDe(p.cod));}
+function tmD(p){
+  var v=tmRB(p)+tmEn(p.cod)-tmSa(p.cod)-tmDe(p.cod);
+  // Ajusta a cero saldos residuales por redondeo (p. ej. tras trasladar el 100%
+  // a montículo queda un sliver de punto flotante). Sin esto, un costo residual
+  // dividido entre un saldo ~0 produce un $/TM absurdamente grande. El umbral
+  // 0.01 TM (10 kg) es el mismo que la app ya usa para "no despachable".
+  return v>0.01?v:0;
+}
 function tmFin(p){return p.estado==='Finalizada'?tmD(p):0;}
 function sinS(p){return tmD(p)<=0.001&&tmDe(p.cod)>0;}
 
@@ -1145,7 +1236,15 @@ function ctMov(m){
 // cedido se recalcula solo y la proporcionalidad costo/TM se mantiene.
 // Esto reemplaza el 'ct' congelado que se guardaba en el momento del traslado.
 function cCed(c){
-  return DB.movs.filter(m=>m.orig===c).reduce(function(s,m){ return s + ctMov(m); },0);
+  var total=DB.movs.filter(m=>m.orig===c).reduce(function(s,m){ return s + ctMov(m); },0);
+  // Tope de seguridad: una pila no puede ceder más costo del que tiene (bruto).
+  // Sin esto, varias salidas "totales" con pct≈1 (p. ej. una pila que recibe TM
+  // y luego traslada todo en varios movimientos) ceden el bruto más de una vez y
+  // dejan un costo total NEGATIVO. El tope garantiza costo residual ≥ 0.
+  // Nota: NO corrige el costo ya propagado a las pilas/montículos destino.
+  var p=DB.pilas.find(function(x){return x.cod===c;});
+  if(p){ var bruto=cMP(p)+cMq(c)+cRec(c); if(total>bruto) total=bruto; }
+  return total;
 }
 function cLabNeto(p){return cMq(p.cod)+cRec(p.cod)-cCed(p.cod);}
 // Fracción del costo que QUEDA en la pila (no cedida). Entre 0 y 1.
@@ -1265,15 +1364,15 @@ function nav(sec){
   document.querySelectorAll('.sc').forEach(e=>e.classList.remove('on'));
   const ni=document.querySelector('.ni[onclick="nav(\''+sec+'\')"]');if(ni)ni.classList.add('on');
   const si=document.getElementById('sc-'+sec);if(si)si.classList.add('on');
-  const T={dash:'Dashboard',alert:'Alertas','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',eficiencia:'Eficiencia de máquina',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',cfg:'Configuración'};
-  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',eficiencia:'Tiempo efectivo de volteo vs. traslado entre pilas, por día y máquina',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',cfg:'Costos y parámetros'};
+  const T={dash:'Dashboard',alert:'Alertas','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',eficiencia:'Eficiencia de máquina',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',reportes:'Reportería',cfg:'Configuración'};
+  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',eficiencia:'Tiempo efectivo de volteo vs. traslado entre pilas, por día y máquina',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',reportes:'Reportes de gestión por período',cfg:'Costos y parámetros'};
   document.getElementById('ptit').textContent=T[sec]||sec;
   document.getElementById('psub').textContent=S[sec]||'';
   const hf=['pilas','acts','mon','movs','desps'].includes(sec);
   document.getElementById('bnew').style.display=hf?'':'none';
   const L={pilas:'Nueva pila',acts:'Nueva actividad',mon:'Nuevo monitoreo',movs:'Nuevo traslado',desps:'Nuevo despacho'};
   document.getElementById('blbl').textContent=L[sec]||'Nuevo';
-  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='orden-campo')rOrdenCampo();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();if(sec==='eficiencia')rEficiencia();
+  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='orden-campo')rOrdenCampo();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();if(sec==='eficiencia')rEficiencia();if(sec==='reportes')rReportes();
   mpo=null;render();
 }
 
@@ -3710,6 +3809,322 @@ function eficPeriodo(modo,silent){
     else lbl.textContent='('+(eficRango.desde?fmt(eficRango.desde):'inicio')+' — '+(eficRango.hasta?fmt(eficRango.hasta):'hoy')+')';
   }
   if(!silent) rEficiencia();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  REPORTERÍA — reportes de gestión (solo lectura sobre DB)
+// ══════════════════════════════════════════════════════════════
+var repTabActual='labores';
+var repRango={desde:undefined,hasta:undefined};
+
+function rReportes(){
+  if(repRango.desde===undefined) repPeriodo('semana',true);
+  repTab(repTabActual);
+}
+
+// Cambia de sub-reporte y muestra/oculta la barra de período
+function repTab(tab){
+  repTabActual=tab;
+  ['labores','maquinaria','inventario','temporada'].forEach(function(t){
+    var b=document.getElementById('rep-tab-'+t);
+    if(b) b.classList.toggle('on', t===tab);
+    var p=document.getElementById('rep-pane-'+t);
+    if(p) p.style.display=(t===tab)?'':'none';
+  });
+  var bar=document.getElementById('rep-periodo-bar');
+  if(bar) bar.style.display=(tab==='labores'||tab==='maquinaria')?'flex':'none';
+  if(tab==='labores') rRepLabores();
+  else if(tab==='maquinaria') rRepMaquinaria();
+  else if(tab==='inventario') rRepInventario();
+  else if(tab==='temporada') rRepTemporada();
+}
+
+// Selector de período (mismo patrón que eficPeriodo). modo: dia|semana|mes|todo|rango
+function repPeriodo(modo,silent){
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  function iso(d){return d.toISOString().split('T')[0];}
+  if(modo==='dia'){ repRango.desde=td(); repRango.hasta=td(); }
+  else if(modo==='semana'){
+    var dow=(hoy.getDay()+6)%7; // 0=lunes
+    var lun=new Date(hoy); lun.setDate(hoy.getDate()-dow);
+    var dom=new Date(lun); dom.setDate(lun.getDate()+6);
+    repRango.desde=iso(lun); repRango.hasta=iso(dom);
+  } else if(modo==='mes'){
+    var ini=new Date(hoy.getFullYear(),hoy.getMonth(),1);
+    var fin=new Date(hoy.getFullYear(),hoy.getMonth()+1,0);
+    repRango.desde=iso(ini); repRango.hasta=iso(fin);
+  } else if(modo==='todo'){ repRango.desde=null; repRango.hasta=null; }
+  else if(modo==='rango'){
+    var de=document.getElementById('rep-desde'), ha=document.getElementById('rep-hasta');
+    repRango.desde=de&&de.value?de.value:null;
+    repRango.hasta=ha&&ha.value?ha.value:null;
+  }
+  if(modo!=='rango'){
+    var de2=document.getElementById('rep-desde'), ha2=document.getElementById('rep-hasta');
+    if(de2) de2.value=repRango.desde||'';
+    if(ha2) ha2.value=repRango.hasta||'';
+  }
+  var lbl=document.getElementById('rep-rango-lbl');
+  if(lbl){
+    if(!repRango.desde&&!repRango.hasta) lbl.textContent='(todos los registros)';
+    else if(repRango.desde===repRango.hasta) lbl.textContent='('+fmt(repRango.desde)+')';
+    else lbl.textContent='('+(repRango.desde?fmt(repRango.desde):'inicio')+' — '+(repRango.hasta?fmt(repRango.hasta):'hoy')+')';
+  }
+  if(!silent){
+    if(repTabActual==='maquinaria') rRepMaquinaria(); else rRepLabores();
+  }
+}
+
+// Filtra DB.acts por el rango activo (vacío = todos)
+function repActsEnRango(){
+  var d0=repRango.desde, d1=repRango.hasta;
+  return (DB.acts||[]).filter(function(a){
+    var f=String(a.fecha||'').substring(0,10);
+    if(d0 && f<d0) return false;
+    if(d1 && f>d1) return false;
+    return true;
+  });
+}
+
+// ── Reporte 1: Labores realizadas en el período ──────────────
+function rRepLabores(){
+  var data=repActsEnRango();
+  var horas=data.reduce(function(s,a){return s+(parseFloat(a.horas)||0);},0);
+  var costo=data.reduce(function(s,a){return s+(a.cost||0);},0);
+  var ops={}, pilasSet={};
+  data.forEach(function(a){ if(a.op) ops[a.op]=true; if(a.pila) pilasSet[a.pila]=true; });
+  var k=document.getElementById('rep-lab-kpis');
+  if(k) k.innerHTML=
+    '<div class="kpi"><div class="kl"><i class="ti ti-clipboard-list"></i> Labores</div><div class="kv">'+data.length+'</div></div>'
+    +'<div class="kpi ok"><div class="kl"><i class="ti ti-clock"></i> Horas totales</div><div class="kv">'+fN(horas,1)+' <span class="ku">h</span></div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-currency-dollar"></i> Costo total</div><div class="kv" style="font-size:15px">'+fM(costo)+'</div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-users"></i> Operarios</div><div class="kv">'+Object.keys(ops).length+'</div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas intervenidas</div><div class="kv">'+Object.keys(pilasSet).length+'</div></div>';
+  // Resumen por tipo de labor
+  var porTipo={};
+  data.forEach(function(a){
+    var key=a.labor||'(sin labor)';
+    if(!porTipo[key]) porTipo[key]={n:0,horas:0,costo:0};
+    porTipo[key].n++; porTipo[key].horas+=(parseFloat(a.horas)||0); porTipo[key].costo+=(a.cost||0);
+  });
+  var tbT=document.getElementById('rep-lab-tipo-tb');
+  var tiposKeys=Object.keys(porTipo).sort(function(a,b){return porTipo[b].costo-porTipo[a].costo;});
+  if(tbT) tbT.innerHTML = tiposKeys.length ? tiposKeys.map(function(key){
+    var g=porTipo[key];
+    var lo=DB.labs.find(function(l){return l.n===key;});
+    return '<tr><td><strong>'+key+'</strong></td><td>'+(lo?lo.cat:'—')+'</td>'
+      +'<td style="text-align:right">'+g.n+'</td>'
+      +'<td style="text-align:right">'+fN(g.horas,2)+'</td>'
+      +'<td style="text-align:right"><strong>'+fM(g.costo)+'</strong></td></tr>';
+  }).join('') : '<tr><td colspan="5"><div class="em"><i class="ti ti-clipboard-list"></i>Sin labores en el período.</div></td></tr>';
+  // Resumen por operario
+  var porOp={};
+  data.forEach(function(a){
+    var key=a.op||'(sin operario)';
+    if(!porOp[key]) porOp[key]={n:0,horas:0,costo:0};
+    porOp[key].n++; porOp[key].horas+=(parseFloat(a.horas)||0); porOp[key].costo+=(a.cost||0);
+  });
+  var tbO=document.getElementById('rep-lab-op-tb');
+  var opKeys=Object.keys(porOp).sort(function(a,b){return porOp[b].horas-porOp[a].horas;});
+  if(tbO) tbO.innerHTML = opKeys.length ? opKeys.map(function(key){
+    var g=porOp[key];
+    return '<tr><td><strong>'+key+'</strong></td>'
+      +'<td style="text-align:right">'+g.n+'</td>'
+      +'<td style="text-align:right">'+fN(g.horas,2)+'</td>'
+      +'<td style="text-align:right"><strong>'+fM(g.costo)+'</strong></td></tr>';
+  }).join('') : '<tr><td colspan="4"><div class="em"><i class="ti ti-users"></i>Sin labores en el período.</div></td></tr>';
+  // Detalle
+  var det=data.slice().sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  var tbD=document.getElementById('rep-lab-det-tb');
+  if(tbD) tbD.innerHTML = det.length ? det.map(function(a,i){
+    return '<tr><td>'+(i+1)+'</td>'
+      +'<td><strong style="color:var(--ms2)">'+a.pila+'</strong></td>'
+      +'<td>'+fmt(a.fecha)+'</td><td>'+a.labor+'</td>'
+      +'<td>'+(a.equipo||'—')+'</td>'
+      +'<td style="text-align:right">'+fN(a.horas,2)+'</td>'
+      +'<td style="text-align:right"><strong>'+fM(a.cost)+'</strong></td>'
+      +'<td>'+(a.op||'—')+'</td></tr>';
+  }).join('') : '<tr><td colspan="8"><div class="em"><i class="ti ti-clipboard-list"></i>Sin labores en el período.</div></td></tr>';
+}
+
+// ── Reporte 2: Maquinaria — horas por máquina en el período ───
+function rRepMaquinaria(){
+  var data=repActsEnRango().filter(function(a){return a.equipo && (parseFloat(a.horas)>0);});
+  var porMaq={};
+  data.forEach(function(a){
+    var key=a.equipo;
+    if(!porMaq[key]) porMaq[key]={hEf:0,hTras:0,costo:0,dias:{},pilas:{}};
+    var g=porMaq[key];
+    g.hEf += (a._horasEf!=null?a._horasEf:(parseFloat(a.horas)||0));
+    g.hTras += (a._horasTras||0);
+    g.costo += (a.cost||0);
+    g.dias[String(a.fecha||'').substring(0,10)]=true;
+    if(a.pila) g.pilas[a.pila]=true;
+  });
+  var maqKeys=Object.keys(porMaq).sort();
+  var totEf=0,totTras=0,totCosto=0;
+  maqKeys.forEach(function(key){ totEf+=porMaq[key].hEf; totTras+=porMaq[key].hTras; totCosto+=porMaq[key].costo; });
+  var pctTras=(totEf+totTras)>0?(totTras/(totEf+totTras)*100):0;
+  var k=document.getElementById('rep-maq-kpis');
+  if(k) k.innerHTML=
+    '<div class="kpi ok"><div class="kl"><i class="ti ti-clock"></i> Horas-máquina</div><div class="kv">'+fN(totEf+totTras,1)+' <span class="ku">h</span></div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-tractor"></i> Máquinas activas</div><div class="kv">'+maqKeys.length+'</div></div>'
+    +'<div class="kpi '+(pctTras>30?'dn':pctTras>20?'wn':'ok')+'"><div class="kl"><i class="ti ti-percentage"></i> % en traslado</div><div class="kv">'+fN(pctTras,1)+'%</div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-currency-dollar"></i> Costo total</div><div class="kv" style="font-size:15px">'+fM(totCosto)+'</div></div>';
+  var sub=document.getElementById('rep-maq-sub');
+  if(sub){
+    if(!repRango.desde&&!repRango.hasta) sub.textContent='(todos los registros)';
+    else sub.textContent=(repRango.desde?fmt(repRango.desde):'inicio')+' — '+(repRango.hasta?fmt(repRango.hasta):'hoy');
+  }
+  var tb=document.getElementById('rep-maq-tb');
+  if(!maqKeys.length){ tb.innerHTML='<tr><td colspan="8"><div class="em"><i class="ti ti-gauge"></i>Sin labores de máquina en el período.</div></td></tr>'; return; }
+  var filas=maqKeys.map(function(key){
+    var g=porMaq[key];
+    var hTot=g.hEf+g.hTras;
+    var pct=hTot>0?(g.hTras/hTot*100):0;
+    var pctColor=pct>30?'var(--rd2)':pct>20?'var(--am)':'var(--ms)';
+    return '<tr>'
+      +'<td><strong style="color:var(--ms2)">'+key+'</strong></td>'
+      +'<td style="text-align:right">'+Object.keys(g.dias).length+'</td>'
+      +'<td style="text-align:right">'+Object.keys(g.pilas).length+'</td>'
+      +'<td style="text-align:right">'+fN(g.hEf,2)+'</td>'
+      +'<td style="text-align:right;color:var(--am)">'+fN(g.hTras,2)+'</td>'
+      +'<td style="text-align:right"><strong>'+fN(hTot,2)+'</strong></td>'
+      +'<td style="text-align:right;color:'+pctColor+';font-weight:700">'+fN(pct,1)+'%</td>'
+      +'<td style="text-align:right"><strong>'+fM(g.costo)+'</strong></td></tr>';
+  }).join('');
+  filas+='<tr style="border-top:2px solid var(--bd2);font-weight:700;background:var(--cr2)">'
+    +'<td>TOTAL</td><td></td><td></td>'
+    +'<td style="text-align:right">'+fN(totEf,2)+'</td>'
+    +'<td style="text-align:right;color:var(--am)">'+fN(totTras,2)+'</td>'
+    +'<td style="text-align:right">'+fN(totEf+totTras,2)+'</td>'
+    +'<td style="text-align:right">'+fN(pctTras,1)+'%</td>'
+    +'<td style="text-align:right">'+fM(totCosto)+'</td></tr>';
+  tb.innerHTML=filas;
+}
+
+// ── Reporte 3: Inventario disponible para venta (snapshot) ────
+function rRepInventario(){
+  var fe=document.getElementById('rep-inv-fecha');
+  if(fe) fe.textContent='al '+fmtL(td());
+  var pilasAp=DB.pilas.filter(function(p){return p.estado==='SOLVITA Aprobado' && tmD(p)>0.01;})
+    .sort(function(a,b){return (a.cod||'').localeCompare(b.cod||'');});
+  var montsDisp=DB.monts.filter(function(m){return montTmD(m.id)>0.01;});
+  var tmPilas=pilasAp.reduce(function(s,p){return s+tmD(p);},0);
+  var costoPilas=pilasAp.reduce(function(s,p){return s+cT(p);},0);
+  var tmMont=montsDisp.reduce(function(s,m){return s+montTmD(m.id);},0);
+  var costoMont=montsDisp.reduce(function(s,m){return s+montCostoTotal(m.id);},0);
+  var tmTot=tmPilas+tmMont, costoTot=costoPilas+costoMont;
+  var k=document.getElementById('rep-inv-kpis');
+  if(k) k.innerHTML=
+    '<div class="kpi ok"><div class="kl"><i class="ti ti-scale"></i> TM disponibles</div><div class="kv">'+fN(tmTot,1)+' <span class="ku">TM</span></div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-currency-dollar"></i> Costo del inventario</div><div class="kv" style="font-size:15px">'+fM(costoTot)+'</div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas aprobadas</div><div class="kv">'+pilasAp.length+'</div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-building-warehouse"></i> Montículos c/saldo</div><div class="kv">'+montsDisp.length+'</div></div>';
+  var tbP=document.getElementById('rep-inv-pilas-tb');
+  if(tbP) tbP.innerHTML = pilasAp.length ? (pilasAp.map(function(p){
+    var disp=tmD(p), ct=cT(p), ctm=disp>0?ct/disp:0;
+    return '<tr>'
+      +'<td><strong style="color:var(--ms2)">'+p.cod+'</strong></td>'
+      +'<td>'+(sectorNombre(p.cod)||'—')+'</td>'
+      +'<td style="text-align:right">'+dB(p.fecha,td())+'d</td>'
+      +'<td style="text-align:right"><strong style="color:var(--ms)">'+fN(disp,2)+'</strong></td>'
+      +'<td style="text-align:right">'+fM(ctm)+'</td>'
+      +'<td style="text-align:right"><strong>'+fM(ct)+'</strong></td></tr>';
+  }).join('')
+    + '<tr style="border-top:2px solid var(--bd2);font-weight:700;background:var(--cr2)"><td colspan="3">SUBTOTAL PILAS</td><td style="text-align:right">'+fN(tmPilas,2)+'</td><td></td><td style="text-align:right">'+fM(costoPilas)+'</td></tr>')
+    : '<tr><td colspan="6"><div class="em"><i class="ti ti-stack-2"></i>No hay pilas con SOLVITA Aprobado y saldo disponible.</div></td></tr>';
+  var tbM=document.getElementById('rep-inv-monts-tb');
+  if(tbM) tbM.innerHTML = montsDisp.length ? (montsDisp.map(function(m){
+    var disp=montTmD(m.id), ct=montCostoTotal(m.id), ctm=montCtm(m.id);
+    return '<tr>'
+      +'<td><strong style="color:var(--am)">'+m.n+'</strong></td>'
+      +'<td style="text-align:right"><strong style="color:var(--ms)">'+fN(disp,2)+'</strong></td>'
+      +'<td style="text-align:right">'+(ctm!=null?fM(ctm):'—')+'</td>'
+      +'<td style="text-align:right"><strong>'+fM(ct)+'</strong></td></tr>';
+  }).join('')
+    + '<tr style="border-top:2px solid var(--bd2);font-weight:700;background:var(--cr2)"><td>SUBTOTAL MONTÍCULOS</td><td style="text-align:right">'+fN(tmMont,2)+'</td><td></td><td style="text-align:right">'+fM(costoMont)+'</td></tr>')
+    : '<tr><td colspan="4"><div class="em"><i class="ti ti-building-warehouse"></i>No hay montículos con saldo.</div></td></tr>';
+}
+
+// ── Reporte 4: Volteos por temporada ─────────────────────────
+// Temporada de recepción de MP: arranca en noviembre. Una fecha de
+// nov(YYYY) a oct(YYYY+1) pertenece a la temporada "YY-(YY+1)".
+function temporadaDe(fechaISO){
+  if(!fechaISO) return null;
+  // p.fecha puede venir como 'YYYY-MM-DD' o ISO completo ('YYYY-MM-DDThh:mm:ssZ');
+  // tomamos solo la parte de fecha para evitar corrimientos por zona horaria.
+  var soloFecha=String(fechaISO).substring(0,10);
+  var d=new Date(soloFecha+'T12:00:00');
+  if(isNaN(d.getTime())) return null;
+  var y=d.getFullYear(), m=d.getMonth(); // 0=ene … 10=nov
+  var startY=(m>=10)?y:y-1;
+  var yy=function(n){return String(n).slice(-2);};
+  return yy(startY)+'-'+yy(startY+1);
+}
+
+function rRepTemporada(){
+  // Pilas con al menos un análisis SOLVITA registrado
+  var conSolv={};
+  (DB.acts||[]).forEach(function(a){ if(a.labor==='Análisis SOLVITA' && a.pila) conSolv[a.pila]=true; });
+  // Pilas que ya salieron de campo: trasladadas a montículo o despachadas.
+  // (Útil para temporadas donde no siempre se registró el análisis SOLVITA.)
+  var salida={};
+  (DB.movs||[]).forEach(function(m){ if(m.tipo==='Traslado a montículo' && m.orig) salida[m.orig]=true; });
+  (DB.desps||[]).forEach(function(d){ if(d.pila) salida[d.pila]=true; });
+  var incEl=document.getElementById('rep-temp-incluir-mov');
+  var incluir = incEl ? incEl.checked : true;
+  var pilas=DB.pilas.filter(function(p){ return conSolv[p.cod] || (incluir && salida[p.cod]); });
+  // Agrupar por temporada
+  var porTemp={};
+  pilas.forEach(function(p){
+    var t=temporadaDe(p.fecha)||'(sin fecha)';
+    if(!porTemp[t]) porTemp[t]={pilas:[],volteos:0,tmF:0};
+    porTemp[t].pilas.push(p);
+    porTemp[t].volteos += totalVolteos(p.cod);
+    porTemp[t].tmF += tmF(p);
+  });
+  var temps=Object.keys(porTemp).sort(function(a,b){return b.localeCompare(a);}); // más reciente primero
+  // Tabla resumen por temporada
+  var tbR=document.getElementById('rep-temp-resumen-tb');
+  if(tbR) tbR.innerHTML = temps.length ? temps.map(function(t){
+    var g=porTemp[t], n=g.pilas.length;
+    return '<tr><td><strong>'+t+'</strong></td>'
+      +'<td style="text-align:right">'+n+'</td>'
+      +'<td style="text-align:right"><strong style="color:var(--ms2)">'+g.volteos+'</strong></td>'
+      +'<td style="text-align:right">'+fN(n>0?g.volteos/n:0,1)+'</td>'
+      +'<td style="text-align:right">'+fN(g.tmF,2)+'</td></tr>';
+  }).join('') : '<tr><td colspan="5"><div class="em"><i class="ti ti-calendar-stats"></i>No hay pilas con análisis SOLVITA registrado.</div></td></tr>';
+  // Selector de temporada (conserva selección previa si sigue existiendo)
+  var sel=document.getElementById('rep-temp-sel');
+  if(sel){
+    var prev=sel.value;
+    sel.innerHTML=temps.map(function(t){return '<option value="'+t+'">Temporada '+t+'</option>';}).join('');
+    if(prev && temps.indexOf(prev)>=0) sel.value=prev;
+  }
+  var tSel=sel?sel.value:(temps[0]||'');
+  var lblEl=document.getElementById('rep-temp-det-lbl');
+  if(lblEl) lblEl.textContent = tSel?('Temporada '+tSel):'—';
+  var g=porTemp[tSel];
+  var nSel=g?g.pilas.length:0;
+  var k=document.getElementById('rep-temp-kpis');
+  if(k) k.innerHTML=
+    '<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas en temporada</div><div class="kv">'+nSel+'</div></div>'
+    +'<div class="kpi ok"><div class="kl"><i class="ti ti-rotate-clockwise"></i> Volteos totales</div><div class="kv">'+(g?g.volteos:0)+'</div></div>'
+    +'<div class="kpi"><div class="kl"><i class="ti ti-chart-bar"></i> Prom. volteos/pila</div><div class="kv">'+fN(nSel>0?g.volteos/nSel:0,1)+'</div></div>';
+  var tbD=document.getElementById('rep-temp-det-tb');
+  if(!tbD) return;
+  if(!g || !g.pilas.length){ tbD.innerHTML='<tr><td colspan="6"><div class="em"><i class="ti ti-stack-2"></i>Sin pilas en esta temporada.</div></td></tr>'; return; }
+  var det=g.pilas.slice().sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  tbD.innerHTML=det.map(function(p){
+    return '<tr>'
+      +'<td><strong style="color:var(--ms2)">'+p.cod+'</strong></td>'
+      +'<td>'+fmt(p.fecha)+'</td>'
+      +'<td>'+eb(p.estado)+'</td>'
+      +'<td style="text-align:right">'+fN(tmF(p),2)+'</td>'
+      +'<td style="text-align:right">'+fN(tmD(p),2)+'</td>'
+      +'<td style="text-align:right"><strong style="color:var(--ms2)">'+totalVolteos(p.cod)+'</strong></td></tr>';
+  }).join('');
 }
 
 function rEficiencia(){
