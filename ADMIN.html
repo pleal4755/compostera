@@ -5324,7 +5324,10 @@ function mostrarLoginAdmin(){
     +'<div style="background:#fff;color:#222;border-radius:16px;padding:34px 30px;width:320px;max-width:90vw;box-shadow:0 12px 40px rgba(0,0,0,.3);text-align:center">'
     +'<div style="font-size:46px;margin-bottom:6px">🔒</div>'
     +'<div style="font-size:20px;font-weight:700;margin-bottom:2px">Panel de Administración</div>'
-    +'<div style="font-size:13px;color:#777;margin-bottom:20px">Ingresá la contraseña para continuar</div>'
+    +'<div style="font-size:13px;color:#777;margin-bottom:20px">Ingresá tu usuario y contraseña</div>'
+    +'<input type="text" id="admin-usuario" placeholder="Usuario" autocomplete="username" '
+      +'style="width:100%;box-sizing:border-box;font-size:16px;padding:11px 12px;border:1px solid #ccc;border-radius:9px;text-align:center;margin-bottom:8px" '
+      +'onkeydown="if(event.key===\'Enter\'){var p=document.getElementById(\'admin-clave\');if(p)p.focus();}">'
     +'<input type="password" id="admin-clave" placeholder="Contraseña" autocomplete="current-password" '
       +'style="width:100%;box-sizing:border-box;font-size:16px;padding:11px 12px;border:1px solid #ccc;border-radius:9px;text-align:center;margin-bottom:10px" '
       +'onkeydown="if(event.key===\'Enter\')entrarAdmin()">'
@@ -5332,26 +5335,28 @@ function mostrarLoginAdmin(){
     +'<button onclick="entrarAdmin()" style="width:100%;padding:12px;border:none;background:#1a7a3a;color:#fff;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer">Entrar</button>'
     +'</div>';
   document.body.appendChild(ov);
-  setTimeout(function(){ var i=document.getElementById('admin-clave'); if(i) i.focus(); },60);
+  setTimeout(function(){ var i=document.getElementById('admin-usuario'); if(i) i.focus(); },60);
 }
 function entrarAdmin(){
+  var usr=document.getElementById('admin-usuario');
   var inp=document.getElementById('admin-clave');
   var err=document.getElementById('admin-login-err');
+  var u=usr?usr.value.trim():'';
   var pwd=inp?inp.value.trim():'';
-  if(!pwd){ if(err) err.textContent='Escribí la contraseña.'; return; }
+  if(!u || !pwd){ if(err){ err.style.color='#c0392b'; err.textContent='Escribí usuario y contraseña.'; } return; }
   if(err){ err.style.color='#777'; err.textContent='Verificando…'; }
-  fetch(GS_URL+'?accion=loginAdmin&clave='+encodeURIComponent(pwd))
+  fetch(GS_URL+'?accion=loginAdmin&usuario='+encodeURIComponent(u)+'&clave='+encodeURIComponent(pwd))
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(err) err.style.color='#c0392b';
       if(d && d.ok===true){
-        try{ localStorage.setItem('comp_admin_auth','1'); }catch(e){}
+        try{ localStorage.setItem('comp_admin_auth','1'); localStorage.setItem('comp_admin_user', d.usuario||u); }catch(e){}
         var ov=document.getElementById('admin-login'); if(ov) ov.remove();
         try{ render(); }catch(e){ console.error(e); }
       } else if(d && d.error){
         if(err) err.textContent='El Script todavía no tiene el login configurado.';
       } else {
-        if(err) err.textContent='Contraseña incorrecta.';
+        if(err) err.textContent='Usuario o contraseña incorrectos.';
         if(inp){ inp.value=''; inp.focus(); }
       }
     })
@@ -5359,7 +5364,7 @@ function entrarAdmin(){
 }
 function salirAdmin(){
   if(!confirm('¿Cerrar sesión de ADMIN?')) return;
-  try{ localStorage.removeItem('comp_admin_auth'); }catch(e){}
+  try{ localStorage.removeItem('comp_admin_auth'); localStorage.removeItem('comp_admin_user'); }catch(e){}
   location.reload();
 }
 
