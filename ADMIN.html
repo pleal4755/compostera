@@ -640,7 +640,7 @@ td.hi{background:var(--ms6)}
       <div id="rep-pane-maquinaria" style="display:none">
         <div class="kr" id="rep-maq-kpis"></div>
         <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-gauge"></i> Horas por máquina <span id="rep-maq-sub" style="font-size:11px;color:var(--ink4);font-weight:normal;margin-left:6px"></span></div></div>
-          <div class="tw"><table><thead><tr><th>Máquina</th><th style="text-align:right">Días</th><th style="text-align:right">Pilas</th><th style="text-align:right">H. volteo</th><th style="text-align:right">H. traslado</th><th style="text-align:right">H. total</th><th style="text-align:right">% traslado</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-maq-tb"></tbody></table></div>
+          <div class="tw"><table><thead><tr><th>Máquina</th><th style="text-align:right">Días</th><th style="text-align:right">Pilas</th><th style="text-align:right"># Volteos</th><th style="text-align:right">H. volteo</th><th style="text-align:right">H. traslado</th><th style="text-align:right">H. total</th><th style="text-align:right">% traslado</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-maq-tb"></tbody></table></div>
         </div>
       </div>
 
@@ -1224,11 +1224,18 @@ function cBruto(p){return cMP(p)+cMq(p.cod)+cRec(p.cod);}
 // Reutilizable por la pila (cCed) y por el montículo destino (montCostoRec),
 // garantizando que lo que sale de la pila = lo que entra al montículo.
 function ctMov(m){
-  if(m.pct==null || isNaN(m.pct)) return (m.ct||0); // dato viejo sin pct
   var p=DB.pilas.find(function(x){return x.cod===m.orig;});
   if(!p) return (m.ct||0); // origen no es pila (ej. montículo→pila): usar ct guardado
   var bruto=cMP(p)+cMq(m.orig)+cRec(m.orig);
-  return bruto*m.pct;
+  // Costo cedido = bruto × (TM de este movimiento / TM total que tuvo la pila:
+  // base reducida + recibido). Reemplaza el pct guardado, que en pilas con varias
+  // salidas "totales" + TM recibido podía sumar >1 y ceder el bruto más de una vez
+  // (dejaba costo total negativo). Con TM/throughput los traslados nunca ceden más
+  // que el bruto y se reparten en proporción real al material trasladado.
+  var tot=tmRB(p)+tmEn(m.orig);
+  if(tot>0 && m.tm!=null && !isNaN(m.tm)) return bruto*(m.tm/tot);
+  if(m.pct!=null && !isNaN(m.pct)) return bruto*m.pct; // respaldo: dato sin tm utilizable
+  return (m.ct||0);                                    // respaldo: dato viejo sin pct ni tm
 }
 // Costo CEDIDO dinámico: para cada traslado saliente, se cede el porcentaje
 // (pct) de TM trasladado aplicado al costo bruto ACTUAL de la pila. Así, si
@@ -1288,6 +1295,14 @@ function isVolteoRiego(labor){
   if(labObj&&(labObj.cat==='Volteo'||labObj.cat==='Riego'))return true;
   var nm=(labor||'').toLowerCase().trim();
   return nm==='volteo'||nm==='riego'||nm==='riego + volteo'||nm==='volteo+monitoreo';
+}
+// Homologa el nombre de una labor a su forma canónica del catálogo, sin importar
+// mayúsculas/minúsculas (p. ej. "volteo"→"Volteo", "riego"→"Riego"). Se usa para
+// agrupar reportes y que las variantes no salgan como filas separadas.
+function labCanon(labor){
+  var s=String(labor||'').trim();
+  var hit=DB.labs.find(function(l){return l.n.toLowerCase()===s.toLowerCase();});
+  return hit?hit.n:s;
 }
 function lv(c){
   var a=DB.acts.filter(function(x){return x.pila===c&&isVolteoRiego(x.labor);});
@@ -3900,10 +3915,10 @@ function rRepLabores(){
     +'<div class="kpi"><div class="kl"><i class="ti ti-currency-dollar"></i> Costo total</div><div class="kv" style="font-size:15px">'+fM(costo)+'</div></div>'
     +'<div class="kpi"><div class="kl"><i class="ti ti-users"></i> Operarios</div><div class="kv">'+Object.keys(ops).length+'</div></div>'
     +'<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas intervenidas</div><div class="kv">'+Object.keys(pilasSet).length+'</div></div>';
-  // Resumen por tipo de labor
+  // Resumen por tipo de labor (homologando mayúsculas: "volteo"≡"Volteo", etc.)
   var porTipo={};
   data.forEach(function(a){
-    var key=a.labor||'(sin labor)';
+    var key=labCanon(a.labor)||'(sin labor)';
     if(!porTipo[key]) porTipo[key]={n:0,horas:0,costo:0};
     porTipo[key].n++; porTipo[key].horas+=(parseFloat(a.horas)||0); porTipo[key].costo+=(a.cost||0);
   });
@@ -3953,17 +3968,18 @@ function rRepMaquinaria(){
   var porMaq={};
   data.forEach(function(a){
     var key=a.equipo;
-    if(!porMaq[key]) porMaq[key]={hEf:0,hTras:0,costo:0,dias:{},pilas:{}};
+    if(!porMaq[key]) porMaq[key]={hEf:0,hTras:0,costo:0,volteos:0,dias:{},pilas:{}};
     var g=porMaq[key];
     g.hEf += (a._horasEf!=null?a._horasEf:(parseFloat(a.horas)||0));
     g.hTras += (a._horasTras||0);
     g.costo += (a.cost||0);
+    if(isVolteoRiego(a.labor)) g.volteos++;   // cuenta volteos + riegos (mismo criterio que totalVolteos)
     g.dias[String(a.fecha||'').substring(0,10)]=true;
     if(a.pila) g.pilas[a.pila]=true;
   });
   var maqKeys=Object.keys(porMaq).sort();
-  var totEf=0,totTras=0,totCosto=0;
-  maqKeys.forEach(function(key){ totEf+=porMaq[key].hEf; totTras+=porMaq[key].hTras; totCosto+=porMaq[key].costo; });
+  var totEf=0,totTras=0,totCosto=0,totVolteos=0;
+  maqKeys.forEach(function(key){ totEf+=porMaq[key].hEf; totTras+=porMaq[key].hTras; totCosto+=porMaq[key].costo; totVolteos+=porMaq[key].volteos; });
   var pctTras=(totEf+totTras)>0?(totTras/(totEf+totTras)*100):0;
   var k=document.getElementById('rep-maq-kpis');
   if(k) k.innerHTML=
@@ -3977,7 +3993,7 @@ function rRepMaquinaria(){
     else sub.textContent=(repRango.desde?fmt(repRango.desde):'inicio')+' — '+(repRango.hasta?fmt(repRango.hasta):'hoy');
   }
   var tb=document.getElementById('rep-maq-tb');
-  if(!maqKeys.length){ tb.innerHTML='<tr><td colspan="8"><div class="em"><i class="ti ti-gauge"></i>Sin labores de máquina en el período.</div></td></tr>'; return; }
+  if(!maqKeys.length){ tb.innerHTML='<tr><td colspan="9"><div class="em"><i class="ti ti-gauge"></i>Sin labores de máquina en el período.</div></td></tr>'; return; }
   var filas=maqKeys.map(function(key){
     var g=porMaq[key];
     var hTot=g.hEf+g.hTras;
@@ -3987,6 +4003,7 @@ function rRepMaquinaria(){
       +'<td><strong style="color:var(--ms2)">'+key+'</strong></td>'
       +'<td style="text-align:right">'+Object.keys(g.dias).length+'</td>'
       +'<td style="text-align:right">'+Object.keys(g.pilas).length+'</td>'
+      +'<td style="text-align:right"><strong style="color:var(--ms2)">'+g.volteos+'</strong></td>'
       +'<td style="text-align:right">'+fN(g.hEf,2)+'</td>'
       +'<td style="text-align:right;color:var(--am)">'+fN(g.hTras,2)+'</td>'
       +'<td style="text-align:right"><strong>'+fN(hTot,2)+'</strong></td>'
@@ -3995,6 +4012,7 @@ function rRepMaquinaria(){
   }).join('');
   filas+='<tr style="border-top:2px solid var(--bd2);font-weight:700;background:var(--cr2)">'
     +'<td>TOTAL</td><td></td><td></td>'
+    +'<td style="text-align:right">'+totVolteos+'</td>'
     +'<td style="text-align:right">'+fN(totEf,2)+'</td>'
     +'<td style="text-align:right;color:var(--am)">'+fN(totTras,2)+'</td>'
     +'<td style="text-align:right">'+fN(totEf+totTras,2)+'</td>'
