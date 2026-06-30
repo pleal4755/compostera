@@ -5352,7 +5352,7 @@ function entrarAdmin(){
       if(d && d.ok===true){
         try{ localStorage.setItem('comp_admin_auth','1'); localStorage.setItem('comp_admin_user', d.usuario||u); }catch(e){}
         var ov=document.getElementById('admin-login'); if(ov) ov.remove();
-        try{ render(); }catch(e){ console.error(e); }
+        cargarYArrancar();   // recién ahora descargamos la base y pintamos
       } else if(d && d.error){
         if(err) err.textContent='El Script todavía no tiene el login configurado.';
       } else {
@@ -5368,29 +5368,35 @@ function salirAdmin(){
   location.reload();
 }
 
-// ── ARRANQUE CON NUBE (Etapa 2) ──────────────────────────────────────
-// Muestra un aviso mientras descarga de Google, luego pinta la app.
-(function(){
-  var aviso=document.createElement('div');
-  aviso.id='gs-cargando';
-  aviso.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.96);font-family:sans-serif;color:#13602e;font-size:16px;text-align:center;';
-  aviso.innerHTML='<div><div style="font-size:30px;margin-bottom:10px">☁️</div>Cargando datos de la nube…</div>';
-  document.body.appendChild(aviso);
-
-  function arrancar(){
-    var a=document.getElementById('gs-cargando'); if(a) a.remove();
-    if(adminAutenticado()){ try{ render(); }catch(e){ console.error(e); } }
-    else { mostrarLoginAdmin(); }
+// ── ARRANQUE: login primero, datos después ───────────────────────────
+// Si no hay sesión, mostramos el login de inmediato (sin descargar nada,
+// así aparece al instante). La descarga pesada de la nube ocurre recién
+// al entrar (o si la sesión ya estaba iniciada), con un aviso "Cargando…".
+function cargarYArrancar(){
+  var aviso=document.getElementById('gs-cargando');
+  if(!aviso){
+    aviso=document.createElement('div');
+    aviso.id='gs-cargando';
+    aviso.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.96);font-family:sans-serif;color:#13602e;font-size:16px;text-align:center;';
+    aviso.innerHTML='<div><div style="font-size:30px;margin-bottom:10px">☁️</div>Cargando datos de la nube…</div>';
+    document.body.appendChild(aviso);
   }
-
   gsCargarTodo()
-    .then(function(){ gsInstalarSync(); sv(); arrancar(); })
+    .then(function(){
+      gsInstalarSync(); sv();
+      var a=document.getElementById('gs-cargando'); if(a) a.remove();
+      try{ render(); }catch(e){ console.error(e); }
+    })
     .catch(function(err){
       console.warn('[GS] No se pudo cargar de la nube, uso datos locales:',err);
       var a=document.getElementById('gs-cargando');
       if(a){ a.innerHTML='<div><div style="font-size:30px;margin-bottom:10px">⚠️</div>No se pudo conectar a la nube.<br><span style="font-size:13px;color:#888">Trabajando con datos locales. Revisa tu internet.</span><br><br><button onclick="location.reload()" style="padding:8px 18px;border:none;background:#1a7a3a;color:#fff;border-radius:6px;font-size:14px;cursor:pointer">Reintentar</button> <button onclick="document.getElementById(\'gs-cargando\').remove()" style="padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:6px;font-size:14px;cursor:pointer">Seguir sin nube</button></div>'; }
-      arrancar();
+      try{ render(); }catch(e){ console.error(e); }
     });
+}
+(function(){
+  if(adminAutenticado()){ cargarYArrancar(); }   // sesión recordada → carga directo
+  else { mostrarLoginAdmin(); }                   // sin sesión → login YA, sin descargar
 })();
 </script>
 </body>
