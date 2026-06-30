@@ -386,6 +386,7 @@ td.hi{background:var(--ms6)}
     </div>
     <div class="ns"><div class="nl">Configuración</div>
       <div class="ni" onclick="nav('cfg')"><i class="ti ti-adjustments-horizontal"></i> Parámetros</div>
+      <div class="ni" onclick="salirAdmin()"><i class="ti ti-logout"></i> Salir</div>
     </div>
   </nav>
   <div class="sf">
@@ -5306,6 +5307,67 @@ function imprimirHojaMonitoreo(){
 
 document.getElementById('fhoy').textContent=new Date().toLocaleDateString('es-GT',{weekday:'short',day:'numeric',month:'short'});
 
+// ── LOGIN DE ADMIN (validación en el SERVIDOR) ───────────────────────
+// La contraseña vive en el Apps Script (acción 'loginAdmin') y NUNCA baja
+// con los datos, así un operario no puede descubrirla aunque inspeccione
+// la red. El navegador solo manda la clave tecleada y el Script responde
+// {ok:true/false}. La sesión se recuerda en este navegador hasta "Salir".
+function adminAutenticado(){
+  try{ return localStorage.getItem('comp_admin_auth')==='1'; }catch(e){ return false; }
+}
+function mostrarLoginAdmin(){
+  if(document.getElementById('admin-login')) return;
+  var ov=document.createElement('div');
+  ov.id='admin-login';
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:#13602e;font-family:sans-serif;';
+  ov.innerHTML=''
+    +'<div style="background:#fff;color:#222;border-radius:16px;padding:34px 30px;width:320px;max-width:90vw;box-shadow:0 12px 40px rgba(0,0,0,.3);text-align:center">'
+    +'<div style="font-size:46px;margin-bottom:6px">🔒</div>'
+    +'<div style="font-size:20px;font-weight:700;margin-bottom:2px">Panel de Administración</div>'
+    +'<div style="font-size:13px;color:#777;margin-bottom:20px">Ingresá tu usuario y contraseña</div>'
+    +'<input type="text" id="admin-usuario" placeholder="Usuario" autocomplete="username" '
+      +'style="width:100%;box-sizing:border-box;font-size:16px;padding:11px 12px;border:1px solid #ccc;border-radius:9px;text-align:center;margin-bottom:8px" '
+      +'onkeydown="if(event.key===\'Enter\'){var p=document.getElementById(\'admin-clave\');if(p)p.focus();}">'
+    +'<input type="password" id="admin-clave" placeholder="Contraseña" autocomplete="current-password" '
+      +'style="width:100%;box-sizing:border-box;font-size:16px;padding:11px 12px;border:1px solid #ccc;border-radius:9px;text-align:center;margin-bottom:10px" '
+      +'onkeydown="if(event.key===\'Enter\')entrarAdmin()">'
+    +'<div id="admin-login-err" style="color:#c0392b;font-size:13px;min-height:18px;margin-bottom:10px"></div>'
+    +'<button onclick="entrarAdmin()" style="width:100%;padding:12px;border:none;background:#1a7a3a;color:#fff;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer">Entrar</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ var i=document.getElementById('admin-usuario'); if(i) i.focus(); },60);
+}
+function entrarAdmin(){
+  var usr=document.getElementById('admin-usuario');
+  var inp=document.getElementById('admin-clave');
+  var err=document.getElementById('admin-login-err');
+  var u=usr?usr.value.trim():'';
+  var pwd=inp?inp.value.trim():'';
+  if(!u || !pwd){ if(err){ err.style.color='#c0392b'; err.textContent='Escribí usuario y contraseña.'; } return; }
+  if(err){ err.style.color='#777'; err.textContent='Verificando…'; }
+  fetch(GS_URL+'?accion=loginAdmin&usuario='+encodeURIComponent(u)+'&clave='+encodeURIComponent(pwd))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(err) err.style.color='#c0392b';
+      if(d && d.ok===true){
+        try{ localStorage.setItem('comp_admin_auth','1'); localStorage.setItem('comp_admin_user', d.usuario||u); }catch(e){}
+        var ov=document.getElementById('admin-login'); if(ov) ov.remove();
+        try{ render(); }catch(e){ console.error(e); }
+      } else if(d && d.error){
+        if(err) err.textContent='El Script todavía no tiene el login configurado.';
+      } else {
+        if(err) err.textContent='Usuario o contraseña incorrectos.';
+        if(inp){ inp.value=''; inp.focus(); }
+      }
+    })
+    .catch(function(){ if(err){ err.style.color='#c0392b'; err.textContent='No se pudo verificar (revisá tu conexión).'; } });
+}
+function salirAdmin(){
+  if(!confirm('¿Cerrar sesión de ADMIN?')) return;
+  try{ localStorage.removeItem('comp_admin_auth'); localStorage.removeItem('comp_admin_user'); }catch(e){}
+  location.reload();
+}
+
 // ── ARRANQUE CON NUBE (Etapa 2) ──────────────────────────────────────
 // Muestra un aviso mientras descarga de Google, luego pinta la app.
 (function(){
@@ -5315,7 +5377,11 @@ document.getElementById('fhoy').textContent=new Date().toLocaleDateString('es-GT
   aviso.innerHTML='<div><div style="font-size:30px;margin-bottom:10px">☁️</div>Cargando datos de la nube…</div>';
   document.body.appendChild(aviso);
 
-  function arrancar(){ try{ render(); }catch(e){ console.error(e); } var a=document.getElementById('gs-cargando'); if(a) a.remove(); }
+  function arrancar(){
+    var a=document.getElementById('gs-cargando'); if(a) a.remove();
+    if(adminAutenticado()){ try{ render(); }catch(e){ console.error(e); } }
+    else { mostrarLoginAdmin(); }
+  }
 
   gsCargarTodo()
     .then(function(){ gsInstalarSync(); sv(); arrancar(); })
