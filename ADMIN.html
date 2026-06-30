@@ -386,7 +386,6 @@ td.hi{background:var(--ms6)}
     </div>
     <div class="ns"><div class="nl">Configuración</div>
       <div class="ni" onclick="nav('cfg')"><i class="ti ti-adjustments-horizontal"></i> Parámetros</div>
-      <div class="ni" onclick="cambiarClaveAdmin()"><i class="ti ti-key"></i> Cambiar contraseña</div>
       <div class="ni" onclick="salirAdmin()"><i class="ti ti-logout"></i> Salir</div>
     </div>
   </nav>
@@ -2461,9 +2460,7 @@ function saveCfg(){
 }
 function resetCfg(){
   if(!confirm('¿Restaurar defaults?'))return;
-  var claveAdmin=DB.cfg?DB.cfg.adminClave:undefined;   // preservar la contraseña de ADMIN
   DB.cfg={...DC,fv:[...DC.fv],fm:[...DC.fm]};
-  if(claveAdmin!=null) DB.cfg.adminClave=claveAdmin;
   sv();gsGuardarCatalogo('cfg',DB.cfg);rCfg();toast('Restaurado');
 }
 
@@ -5310,15 +5307,12 @@ function imprimirHojaMonitoreo(){
 
 document.getElementById('fhoy').textContent=new Date().toLocaleDateString('es-GT',{weekday:'short',day:'numeric',month:'short'});
 
-// ── LOGIN DE ADMIN ───────────────────────────────────────────────────
-// Mismo enfoque que el login del operario: la clave vive en la nube
-// (DB.cfg.adminClave, se guarda en tu hoja con los demás parámetros) y se
-// valida en el navegador. Si no hay clave configurada, el acceso queda
-// libre (para no quedar bloqueado la primera vez). La sesión se recuerda
-// en este navegador hasta que se presione "Salir".
-function adminClaveConfig(){ return (DB.cfg && DB.cfg.adminClave!=null) ? String(DB.cfg.adminClave).trim() : ''; }
+// ── LOGIN DE ADMIN (validación en el SERVIDOR) ───────────────────────
+// La contraseña vive en el Apps Script (acción 'loginAdmin') y NUNCA baja
+// con los datos, así un operario no puede descubrirla aunque inspeccione
+// la red. El navegador solo manda la clave tecleada y el Script responde
+// {ok:true/false}. La sesión se recuerda en este navegador hasta "Salir".
 function adminAutenticado(){
-  if(!adminClaveConfig()) return true;               // sin clave configurada → libre
   try{ return localStorage.getItem('comp_admin_auth')==='1'; }catch(e){ return false; }
 }
 function mostrarLoginAdmin(){
@@ -5343,36 +5337,30 @@ function mostrarLoginAdmin(){
 function entrarAdmin(){
   var inp=document.getElementById('admin-clave');
   var err=document.getElementById('admin-login-err');
-  var clave=adminClaveConfig();
-  if(inp && clave.length && inp.value.trim()===clave){
-    try{ localStorage.setItem('comp_admin_auth','1'); }catch(e){}
-    var ov=document.getElementById('admin-login'); if(ov) ov.remove();
-    try{ render(); }catch(e){ console.error(e); }
-  } else {
-    if(err) err.textContent='Contraseña incorrecta.';
-    if(inp){ inp.value=''; inp.focus(); }
-  }
+  var pwd=inp?inp.value.trim():'';
+  if(!pwd){ if(err) err.textContent='Escribí la contraseña.'; return; }
+  if(err){ err.style.color='#777'; err.textContent='Verificando…'; }
+  fetch(GS_URL+'?accion=loginAdmin&clave='+encodeURIComponent(pwd))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(err) err.style.color='#c0392b';
+      if(d && d.ok===true){
+        try{ localStorage.setItem('comp_admin_auth','1'); }catch(e){}
+        var ov=document.getElementById('admin-login'); if(ov) ov.remove();
+        try{ render(); }catch(e){ console.error(e); }
+      } else if(d && d.error){
+        if(err) err.textContent='El Script todavía no tiene el login configurado.';
+      } else {
+        if(err) err.textContent='Contraseña incorrecta.';
+        if(inp){ inp.value=''; inp.focus(); }
+      }
+    })
+    .catch(function(){ if(err){ err.style.color='#c0392b'; err.textContent='No se pudo verificar (revisá tu conexión).'; } });
 }
 function salirAdmin(){
   if(!confirm('¿Cerrar sesión de ADMIN?')) return;
   try{ localStorage.removeItem('comp_admin_auth'); }catch(e){}
   location.reload();
-}
-// Fijar / cambiar / quitar la contraseña de ADMIN (se guarda en la nube).
-function cambiarClaveAdmin(){
-  var actual=adminClaveConfig();
-  if(actual){
-    var v=prompt('Contraseña ACTUAL (para confirmar):');
-    if(v===null) return;
-    if(v.trim()!==actual){ toast('Contraseña actual incorrecta','er'); return; }
-  }
-  var n=prompt('NUEVA contraseña de ADMIN'+(actual?'':'\n(dejá en blanco para no proteger)')+':');
-  if(n===null) return;
-  n=n.trim();
-  DB.cfg.adminClave=n;
-  sv(); gsGuardarCatalogo('cfg',DB.cfg);
-  try{ localStorage.setItem('comp_admin_auth','1'); }catch(e){}   // seguimos dentro
-  toast(n?'Contraseña de ADMIN actualizada':'Protección de ADMIN desactivada');
 }
 
 // ── ARRANQUE CON NUBE (Etapa 2) ──────────────────────────────────────
