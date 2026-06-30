@@ -5312,9 +5312,8 @@ document.getElementById('fhoy').textContent=new Date().toLocaleDateString('es-GT
 // con los datos, así un operario no puede descubrirla aunque inspeccione
 // la red. El navegador solo manda la clave tecleada y el Script responde
 // {ok:true/false}. La sesión se recuerda en este navegador hasta "Salir".
-function adminAutenticado(){
-  try{ return localStorage.getItem('comp_admin_auth')==='1'; }catch(e){ return false; }
-}
+// Pide la contraseña en CADA apertura o recarga (no recuerda la sesión).
+function adminAutenticado(){ return false; }
 function mostrarLoginAdmin(){
   if(document.getElementById('admin-login')) return;
   var ov=document.createElement('div');
@@ -5350,7 +5349,6 @@ function entrarAdmin(){
     .then(function(d){
       if(err) err.style.color='#c0392b';
       if(d && d.ok===true){
-        try{ localStorage.setItem('comp_admin_auth','1'); localStorage.setItem('comp_admin_user', d.usuario||u); }catch(e){}
         var ov=document.getElementById('admin-login'); if(ov) ov.remove();
         cargarYArrancar();   // recién ahora descargamos la base y pintamos
       } else if(d && d.error){
