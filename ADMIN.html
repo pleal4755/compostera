@@ -1266,12 +1266,31 @@ function fracEnPila(p){
 function cLabEnPila(p){
   return (cMq(p.cod)+cRec(p.cod)) * fracEnPila(p);
 }
-function cT(p){return cMP(p)+cMq(p.cod)+cRec(p.cod)-cCed(p.cod);}
+// Costo que SALE por despachos (ventas), proporcional a las TM despachadas sobre
+// el throughput total de la pila (base reducida + recibido) — mismo criterio que
+// ctMov usa para los traslados. Sin esto, despachar bajaba las TM pero no el costo,
+// y el $/TM del saldo se inflaba (p. ej. 2026-044 daba $38.80 en vez de ~$19).
+function cDesp(c){
+  var p=DB.pilas.find(function(x){return x.cod===c;});
+  if(!p) return 0;
+  var tot=tmRB(p)+tmEn(c);
+  if(tot<=0) return 0;
+  var bruto=cMP(p)+cMq(c)+cRec(c);
+  return bruto*(tmDe(c)/tot);
+}
+// Costo remanente = bruto − lo cedido por traslados − lo despachado (vendido).
+// Tope combinado: nunca sale más que el bruto (el remanente nunca es negativo).
+function cT(p){
+  var bruto=cMP(p)+cMq(p.cod)+cRec(p.cod);
+  var sale=cCed(p.cod)+cDesp(p.cod);
+  if(sale>bruto) sale=bruto;
+  return bruto-sale;
+}
 function ctm(p){const t=tmD(p);return t>0?cT(p)/t:null;}
 
 function cTip(p){
-  const mp=cMP(p),mq=cMq(p.cod),rc=cRec(p.cod),cd=cCed(p.cod),tot=cT(p);
-  if(rc===0&&cd===0) return '<div class="costo-wrap">'+fM(tot)+'</div>';
+  const mp=cMP(p),mq=cMq(p.cod),rc=cRec(p.cod),cd=cCed(p.cod),ds=cDesp(p.cod),tot=cT(p);
+  if(rc===0&&cd===0&&ds===0) return '<div class="costo-wrap">'+fM(tot)+'</div>';
   const bruto=mp+mq+rc;
   return '<div class="costo-wrap">'+fM(tot)
     +'<span class="costo-icon" title="Ver desglose">i</span>'
@@ -1281,6 +1300,7 @@ function cTip(p){
     +(rc>0?'<div class="ct-row"><span class="ct-pos">+ Costos recibidos</span><span class="ct-pos">'+fM(rc)+'</span></div>':'')
     +'<div class="ct-row" style="border-top:1px solid var(--bd);padding-top:3px"><span>Costo acumulado</span><span>'+fM(bruto)+'</span></div>'
     +(cd>0?'<div class="ct-row"><span class="ct-neg">− Cedido a montículo/pila</span><span class="ct-neg">−'+fM(cd)+'</span></div>':'')
+    +(ds>0?'<div class="ct-row"><span class="ct-neg">− Despachado (vendido)</span><span class="ct-neg">−'+fM(ds)+'</span></div>':'')
     +'<div class="ct-row"><span><strong>Total en la pila</strong></span><span><strong>'+fM(tot)+'</strong></span></div>'
     +'</div></div>';
 }
@@ -4408,8 +4428,18 @@ function montCostoLabores(mid){
   // Costo de equipo y camión individual en traslados a este montículo
   return DB.movs.filter(function(m){return m.dest===mid;}).reduce(function(s,m){return s+(m.costEq||0)+(m.costCamion||0);},0);
 }
+// Costo que SALE del montículo, proporcional a las TM que salieron (despachadas +
+// enviadas a pilas formadas desde él) sobre el total recibido. Mismo criterio que en
+// pilas: sacar producto también saca su parte del costo, para no inflar el $/TM.
+function montCostoSale(mid){
+  var en=montTmEn(mid);
+  if(en<=0) return 0;
+  var bruto=montCostoRec(mid)+montCostoCamion(mid)+montCostoLabores(mid);
+  var sale=montTmDesp(mid)+montTmPila(mid);
+  return bruto*(Math.min(sale,en)/en);
+}
 function montCostoTotal(mid){
-  return montCostoRec(mid)+montCostoCamion(mid)+montCostoLabores(mid);
+  return montCostoRec(mid)+montCostoCamion(mid)+montCostoLabores(mid)-montCostoSale(mid);
 }
 function montCtm(mid){
   var d=montTmD(mid);
