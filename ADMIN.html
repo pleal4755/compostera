@@ -1292,6 +1292,26 @@ function cT(p){
 }
 function ctm(p){const t=tmD(p);return t>0?cT(p)/t:null;}
 
+// Tasa de costo uniforme por TM de una pila o montículo: costo acumulado (bruto)
+// ÷ TM totales que ha manejado (recibido + producido). A diferencia de ctm()/montCtm()
+// (que dividen por el saldo QUE QUEDA hoy), esta tasa no depende de cuánto se ha
+// despachado, así que es la misma para una TM que sigue ahí o que ya salió.
+// Sirve para valorar despachos individuales sin el sesgo de "costo remanente hoy ÷
+// TM antes de este despacho" (que subestima despachos viejos cuando hay varios).
+function tasaTM(cod){
+  var p=DB.pilas.find(function(x){return x.cod===cod;});
+  if(p){
+    var tot=tmRB(p)+tmEn(cod);
+    return tot>0?(cMP(p)+cMq(cod)+cRec(cod))/tot:null;
+  }
+  var m=DB.monts.find(function(x){return x.id===cod;});
+  if(m){
+    var en=montTmEn(cod);
+    return en>0?(montCostoRec(cod)+montCostoCamion(cod)+montCostoLabores(cod))/en:null;
+  }
+  return null;
+}
+
 function cTip(p){
   const mp=cMP(p),mq=cMq(p.cod),rc=cRec(p.cod),cd=cCed(p.cod),ds=cDesp(p.cod),tot=cT(p);
   if(rc===0&&cd===0&&ds===0) return '<div class="costo-wrap">'+fM(tot)+'</div>';
@@ -1566,13 +1586,12 @@ function rDash(){
   // ════════ BLOQUE 4 — Despachos de la semana (solo costos, sin ventas/ingresos) ════════
   var despSem=(DB.desps||[]).filter(function(d){return enRango(d.fecha,d0,d1);});
   var tmDespSem=despSem.reduce(function(s,d){return s+(d.tm||0);},0);
-  // Costo que salió por cada despacho: mismo criterio que la pestaña Despachos
-  // (costo remanente de la pila ÷ TM disponibles justo antes de ese despacho).
+  // Costo que salió por cada despacho: TM despachadas × tasa uniforme de su pila
+  // u origen (ver tasaTM). Evita subestimar despachos viejos cuando una pila tiene
+  // varios despachos (ver sesión 2026-08-20).
   var costoDespSem=despSem.reduce(function(s,d){
-    var p=DB.pilas.find(function(x){return x.cod===d.pila;});
-    var ct2=p?cT(p):0, dPrev=p?tmD(p)+d.tm:d.tm;
-    var ctm2=dPrev>0?ct2/dPrev:0;
-    return s+d.tm*ctm2;
+    var tasa=tasaTM(d.pila);
+    return s+d.tm*(tasa!=null?tasa:0);
   },0);
   var costoPromDesp= tmDespSem>0 ? costoDespSem/tmDespSem : null;
   document.getElementById('dash-desp-rango').textContent=fmtL(d0)+' — '+fmtL(d1);
@@ -1857,9 +1876,8 @@ function rDesps(){
     return;
   }
   tb2.innerHTML=data.map(function(d,i){
-    var p=DB.pilas.find(function(x){return x.cod===d.pila;});
-    var ct2=p?cT(p):0; var dPrev=p?tmD(p)+d.tm:d.tm;
-    var ctm2=dPrev>0?ct2/dPrev:0;
+    var tasa=tasaTM(d.pila);
+    var ctm2=tasa!=null?tasa:0;
     var ing=(d.tm||0)*(d.precio||0);
     var mrg=d.precio?d.precio-ctm2:null;
     return '<tr><td>'+(i+1)+'</td><td>'+fmt(d.fecha)+'</td>'
