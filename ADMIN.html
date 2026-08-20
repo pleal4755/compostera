@@ -420,6 +420,10 @@ td.hi{background:var(--ms6)}
       <div class="dash-secttl"><i class="ti ti-calendar-check"></i> Cumplimiento de la semana <span class="wk" id="dash-wk-rango"></span></div>
       <div class="dgrid g3" id="dash-cumpl"></div>
 
+      <!-- BLOQUE 4 — Despachos de la semana -->
+      <div class="dash-secttl"><i class="ti ti-truck"></i> Despachos de la semana <span class="wk" id="dash-desp-rango"></span></div>
+      <div class="dgrid g4" id="dash-desp"></div>
+
       <!-- Tabla detallada de pilas -->
       <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-stack-2"></i> Pilas en proceso</div></div>
         <div class="tw"><table><thead><tr><th>Código</th><th>Edad</th><th>TM frescas</th><th>TM red. base</th><th class="hi">TM disponibles</th><th class="hi">TM finalizadas</th><th>Últ. temperatura</th><th>Fecha últ. temp.</th><th>Fecha últ. volteo</th><th>Volteos totales</th><th>Estado</th><th>Movimientos</th><th>Costo total</th><th class="hi">$/TM disp.</th></tr></thead><tbody id="dash-tb"></tbody></table></div>
@@ -1558,6 +1562,33 @@ function rDash(){
     complCard('Volteos','ti-tractor',rv)
     +complCard('Monitoreos','ti-thermometer',rm)
     +resumenGlobal;
+
+  // ════════ BLOQUE 4 — Despachos de la semana (solo costos, sin ventas/ingresos) ════════
+  var despSem=(DB.desps||[]).filter(function(d){return enRango(d.fecha,d0,d1);});
+  var tmDespSem=despSem.reduce(function(s,d){return s+(d.tm||0);},0);
+  // Costo que salió por cada despacho: mismo criterio que la pestaña Despachos
+  // (costo remanente de la pila ÷ TM disponibles justo antes de ese despacho).
+  var costoDespSem=despSem.reduce(function(s,d){
+    var p=DB.pilas.find(function(x){return x.cod===d.pila;});
+    var ct2=p?cT(p):0, dPrev=p?tmD(p)+d.tm:d.tm;
+    var ctm2=dPrev>0?ct2/dPrev:0;
+    return s+d.tm*ctm2;
+  },0);
+  var costoPromDesp= tmDespSem>0 ? costoDespSem/tmDespSem : null;
+  document.getElementById('dash-desp-rango').textContent=fmtL(d0)+' — '+fmtL(d1);
+  document.getElementById('dash-desp').innerHTML=
+    '<div class="cost-card accent"><div class="cc-l"><i class="ti ti-truck"></i> Despachos</div>'
+      +'<div class="cc-v">'+despSem.length+'</div>'
+      +'<div class="cc-sub">registros esta semana</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-stack-3"></i> TM despachadas</div>'
+      +'<div class="cc-v">'+fN(tmDespSem,1)+' <span style="font-size:14px">TM</span></div>'
+      +'<div class="cc-sub">total de la semana</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-currency-dollar"></i> Costo despachado</div>'
+      +'<div class="cc-v" style="font-size:18px">'+(costoDespSem>0?fM(costoDespSem):'—')+'</div>'
+      +'<div class="cc-sub">costo que salió de las pilas</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-scale"></i> Costo prom. / TM</div>'
+      +'<div class="cc-v" style="font-size:18px">'+(costoPromDesp!=null?fM(costoPromDesp):'—')+'</div>'
+      +'<div class="cc-sub">ponderado por TM despachada</div></div>';
 
   // ── Tabla detallada de pilas (igual que antes) ──
   const tb2=document.getElementById('dash-tb');
