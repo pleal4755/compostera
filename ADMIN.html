@@ -1288,7 +1288,15 @@ function cT(p){
   var bruto=cMP(p)+cMq(p.cod)+cRec(p.cod);
   var sale=cCed(p.cod)+cDesp(p.cod);
   if(sale>bruto) sale=bruto;
-  return bruto-sale;
+  var rem=bruto-sale;
+  // Si ya no queda TM (tmD=0, tras su propia tolerancia de redondeo) y el
+  // remanente de costo es menor a Q1, es el mismo redondeo (ej. un traslado
+  // "total" registrado con 0.004 TM menos de lo real) — no un saldo real que
+  // nunca se podrá asociar a ninguna TM. Ver pila 2026-005 (quedaba $0.07).
+  // Q1 es a propósito chico: un remanente grande con TM=0 sí debe seguir
+  // visible, porque sería una señal de un error real de datos.
+  if(tmD(p)<=0 && rem>0 && rem<1) rem=0;
+  return rem;
 }
 function ctm(p){const t=tmD(p);return t>0?cT(p)/t:null;}
 
