@@ -1123,7 +1123,13 @@ function recalcularCostosConProrrateo(){
 // ════════════════════════════════════════════════════════════════════
 
 const DC={cach:85,trash:15,red:0.333,tmin:113,tmax:149,hmin:2,hmax:4,solv:90,saviso:7,fv:[5,7,10,14],fm:[3,5,7,10]};
-const DEQ=[{id:'e1',n:'Cargador Frontal',c:45,h:[{f:'2026-01-01',c:45}]},{id:'e2',n:'Tractor + implemento',c:30,h:[{f:'2026-01-01',c:30}]},{id:'e3',n:'Retroexcavadora',c:55,h:[{f:'2026-01-01',c:55}]}];
+const DEQ=[{id:'e1',n:'Cargador Frontal',c:45,h:[{f:'2026-01-01',c:45}]},{id:'e2',n:'Tractor + implemento',c:30,h:[{f:'2026-01-01',c:30}]},{id:'e3',n:'Retroexcavadora',c:55,h:[{f:'2026-01-01',c:55}]},
+  // Dos cargadores frontales físicos distintos (sesión 2026-09-18), cada uno con
+  // su propio horómetro — "Cargador Frontal" se deja intacta para no romper el
+  // enlace por nombre de los 153 registros históricos de "Formación de pila".
+  {id:'e1cf9',n:'Cargador 9',c:45,h:[{f:'2026-09-18',c:45}]},
+  {id:'e1cf3',n:'Cargador 3',c:45,h:[{f:'2026-09-18',c:45}]}
+];
 const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación',destino:'pila'},{id:'l2',n:'Volteo',cat:'Volteo'},{id:'l3',n:'Riego + Volteo',cat:'Volteo'},{id:'l4',n:'Riego',cat:'Riego'},{id:'l5',n:'Traslado',cat:'Movimiento'},{id:'l6',n:'Inspección general',cat:'Monitoreo'},{id:'l7',n:'Monitoreo temperatura',cat:'Monitoreo'},{id:'l8',n:'Despacho parcial',cat:'Despacho'},{id:'l9',n:'Despacho total',cat:'Despacho'},{id:'l10',n:'Análisis SOLVITA',cat:'Control de calidad'},
   // Control de labores del Cargador Frontal (sesión 2026-09-18). "destino" indica
   // a dónde va el costo de esa labor: 'pila' (a la pila elegida), 'traslado' (no

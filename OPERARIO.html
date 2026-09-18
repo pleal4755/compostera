@@ -232,6 +232,12 @@ const CC_LABORES = [
   {n:'Limpieza de áreas', destino:'general'},
   {n:'Tareas varias', destino:'general'}
 ];
+// Cualquier equipo cuyo nombre empiece con "Cargador" (Cargador Frontal,
+// Cargador 9, Cargador 3, y cualquiera que se agregue después) desbloquea
+// "Otra actividad" — cada cargador lleva su propio horómetro.
+function esCargadorFrontal(nombreEquipo){
+  return !!nombreEquipo && nombreEquipo.indexOf('Cargador')===0;
+}
 let OP = null;            // operario logueado
 let TURNO = null;         // turno abierto del día (si existe)
 let pilaActiva = null;    // pila seleccionada para registrar
@@ -389,7 +395,7 @@ function render(){
     // el operario necesita registrar labores del Cargador Frontal (Formación,
     // Apilado, traslados, etc.), que no dependen de tener tareas asignadas.
     html += '<button class="btn-entrar" style="margin-bottom:14px" onclick="abrirTurnoModal()">🌅 Abrir turno</button>';
-  } else if(TURNO.equipo==='Cargador Frontal'){
+  } else if(esCargadorFrontal(TURNO.equipo)){
     html += '<button class="btn-entrar" style="margin-bottom:14px;background:var(--tierra)" onclick="abrirOtraActividad()">➕ Otra actividad</button>';
   }
 
@@ -726,7 +732,7 @@ function labCCActual(){
 function abrirOtraActividad(){
   var opts=CC_LABORES.map(function(l){return '<option value="'+l.n+'">'+l.n+'</option>';}).join('');
   abrirModal(
-    '<h3>➕ Otra actividad</h3><div class="sub">Cargador Frontal</div>'+
+    '<h3>➕ Otra actividad</h3><div class="sub">'+TURNO.equipo+'</div>'+
     '<div class="campo"><label>Labor</label><select id="oa-labor" onchange="renderTargetOA()">'+opts+'</select></div>'+
     '<div id="oa-target"></div>'+
     '<div class="trio">'+
