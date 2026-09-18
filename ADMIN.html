@@ -429,6 +429,10 @@ td.hi{background:var(--ms6)}
       </div>
       <div class="dgrid g4" id="dash-desp"></div>
 
+      <!-- BLOQUE 5 — Costos que no pertenecen a ninguna pila -->
+      <div class="dash-secttl"><i class="ti ti-tool"></i> Costos operativos (sin pila) <span class="wk">acumulado total</span></div>
+      <div class="dgrid g4" id="dash-generales"></div>
+
       <!-- Tabla detallada de pilas -->
       <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-stack-2"></i> Pilas en proceso</div></div>
         <div class="tw"><table><thead><tr><th>Código</th><th>Edad</th><th>TM frescas</th><th>TM red. base</th><th class="hi">TM disponibles</th><th class="hi">TM finalizadas</th><th>Últ. temperatura</th><th>Fecha últ. temp.</th><th>Fecha últ. volteo</th><th>Volteos totales</th><th>Estado</th><th>Movimientos</th><th>Costo total</th><th class="hi">$/TM disp.</th></tr></thead><tbody id="dash-tb"></tbody></table></div>
@@ -1119,7 +1123,23 @@ function recalcularCostosConProrrateo(){
 
 const DC={cach:85,trash:15,red:0.333,tmin:113,tmax:149,hmin:2,hmax:4,solv:90,saviso:7,fv:[5,7,10,14],fm:[3,5,7,10]};
 const DEQ=[{id:'e1',n:'Cargador Frontal',c:45,h:[{f:'2026-01-01',c:45}]},{id:'e2',n:'Tractor + implemento',c:30,h:[{f:'2026-01-01',c:30}]},{id:'e3',n:'Retroexcavadora',c:55,h:[{f:'2026-01-01',c:55}]}];
-const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación'},{id:'l2',n:'Volteo',cat:'Volteo'},{id:'l3',n:'Riego + Volteo',cat:'Volteo'},{id:'l4',n:'Riego',cat:'Riego'},{id:'l5',n:'Traslado',cat:'Movimiento'},{id:'l6',n:'Inspección general',cat:'Monitoreo'},{id:'l7',n:'Monitoreo temperatura',cat:'Monitoreo'},{id:'l8',n:'Despacho parcial',cat:'Despacho'},{id:'l9',n:'Despacho total',cat:'Despacho'},{id:'l10',n:'Análisis SOLVITA',cat:'Control de calidad'}];
+const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación',destino:'pila'},{id:'l2',n:'Volteo',cat:'Volteo'},{id:'l3',n:'Riego + Volteo',cat:'Volteo'},{id:'l4',n:'Riego',cat:'Riego'},{id:'l5',n:'Traslado',cat:'Movimiento'},{id:'l6',n:'Inspección general',cat:'Monitoreo'},{id:'l7',n:'Monitoreo temperatura',cat:'Monitoreo'},{id:'l8',n:'Despacho parcial',cat:'Despacho'},{id:'l9',n:'Despacho total',cat:'Despacho'},{id:'l10',n:'Análisis SOLVITA',cat:'Control de calidad'},
+  // Control de labores del Cargador Frontal (sesión 2026-09-18). "destino" indica
+  // a dónde va el costo de esa labor: 'pila' (a la pila elegida), 'traslado' (no
+  // genera acts — abre el traslado orig→dest ya existente, según "dir"), 'despacho'
+  // (categoría propia "Costo de despacho", aparte de cualquier pila) o 'general'
+  // (categoría "Gastos generales" de la compostera, tampoco ligada a ninguna pila).
+  {id:'l11',n:'Apilado',cat:'Apilado',destino:'pila'},
+  {id:'l12',n:'Manejo',cat:'Manejo',destino:'pila'},
+  {id:'l13',n:'Traslado de pila',cat:'Traslado',destino:'traslado',dir:'p2p'},
+  {id:'l14',n:'Almacenamiento',cat:'Traslado',destino:'traslado',dir:'p2m'},
+  {id:'l15',n:'Pre despacho',cat:'Traslado',destino:'traslado',dir:'m2p'},
+  {id:'l16',n:'Despacho',cat:'Despacho',destino:'despacho'},
+  {id:'l17',n:'Traslado de máquina',cat:'General',destino:'general'},
+  {id:'l18',n:'Manejo de trash',cat:'General',destino:'general'},
+  {id:'l19',n:'Limpieza de áreas',cat:'General',destino:'general'},
+  {id:'l20',n:'Tareas varias',cat:'General',destino:'general'}
+];
 const ESTADOS=['Activa','En Maduración','SOLVITA Pendiente','SOLVITA Aprobado','Finalizada'];
 const EC=['#3D5A2C','#6B9A4A','#C17B2A','#2A5C7A'];
 
@@ -1159,6 +1179,15 @@ function ld(){
     if(!d.planes) d.planes={};
     if(!d.cfg.fv) d.cfg.fv=[...DC.fv];
     if(!d.cfg.fm) d.cfg.fm=[...DC.fm];
+    // Fusiona labores nuevas del catálogo por defecto (DLAB) que un navegador
+    // con caché vieja aún no tiene — por nombre, sin tocar las que el usuario
+    // ya haya agregado/editado a mano. Sin esto, un usuario que ya abrió la
+    // app antes se queda con el catálogo de labores viejo para siempre.
+    if(!d.labs||!d.labs.length) d.labs=JSON.parse(JSON.stringify(DLAB));
+    else{
+      var nombresLab={}; d.labs.forEach(function(l){nombresLab[l.n]=true;});
+      DLAB.forEach(function(l){ if(!nombresLab[l.n]) d.labs.push(JSON.parse(JSON.stringify(l))); });
+    }
     return d;
   }catch(e){return initDB();}
 }
@@ -1360,6 +1389,19 @@ function labCanon(labor){
   var s=String(labor||'').trim();
   var hit=DB.labs.find(function(l){return l.n.toLowerCase()===s.toLowerCase();});
   return hit?hit.n:s;
+}
+// A dónde va el costo de una labor del catálogo: 'pila' | 'traslado' | 'despacho' |
+// 'general' | null (labores sin destino definido, ej. Volteo/Monitoreo/SOLVITA,
+// que no pasan por este mecanismo).
+function labDestino(labor){
+  var l=DB.labs.find(function(x){return x.n===labor;});
+  return l?(l.destino||null):null;
+}
+// Costo acumulado de actividades "sueltas" (sin pila) de un destino dado —
+// 'despacho' o 'general'. No se reparte al $/TM de ninguna pila.
+function costoActsDestino(destino){
+  return (DB.acts||[]).filter(function(a){return labDestino(a.labor)===destino;})
+    .reduce(function(s,a){return s+(a.cost||0);},0);
 }
 function lv(c){
   var a=DB.acts.filter(function(x){return x.pila===c&&isVolteoRiego(x.labor);});
@@ -1652,6 +1694,20 @@ function rDash(){
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-scale"></i> Costo prom. / TM</div>'
       +'<div class="cc-v" style="font-size:18px">'+(costoPromDesp!=null?fM(costoPromDesp):'—')+'</div>'
       +'<div class="cc-sub">ponderado por TM despachada</div></div>';
+
+  // ════════ BLOQUE 5 — Costos que no pertenecen a ninguna pila ════════
+  // Labores del Cargador Frontal marcadas "despacho" o "general" (ver DLAB):
+  // no se prorratean al $/TM de ninguna pila, se muestran aparte. Acumulado
+  // total (no por período) — es costo operativo corriente, no de una pila.
+  var costoDespachoOp=costoActsDestino('despacho');
+  var costoGeneral=costoActsDestino('general');
+  document.getElementById('dash-generales').innerHTML=
+    '<div class="cost-card"><div class="cc-l"><i class="ti ti-truck-loading"></i> Costo de despacho</div>'
+      +'<div class="cc-v" style="font-size:18px">'+(costoDespachoOp>0?fM(costoDespachoOp):'—')+'</div>'
+      +'<div class="cc-sub">labor de carga — no se liga a una pila</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-tool"></i> Gastos generales</div>'
+      +'<div class="cc-v" style="font-size:18px">'+(costoGeneral>0?fM(costoGeneral):'—')+'</div>'
+      +'<div class="cc-sub">limpieza, trash, traslados de máquina</div></div>';
 
   // ── Tabla detallada de pilas (igual que antes) ──
   const tb2=document.getElementById('dash-tb');
