@@ -3704,8 +3704,10 @@ function confirmarSolv(){
       labor: 'Análisis SOLVITA', equipo: '', eqId: '', horas: 0, ch: 0, cost: 0,
       op: '', obs: 'registrado desde módulo SOLVITA'
     });
-    // Cambiar estado
+    // Cambiar estado (y guardarlo — sin esto el cambio solo vivía en el
+    // navegador y se perdía al recargar; ver sesión 2026-09-18)
     p.estado = 'SOLVITA Pendiente';
+    gsEditar('pilas','cod',cod,clonReg(p));
   });
   sv(); kanbanSolvPlan={}; rKanbanSolv(); render();
   toast(cods.length+' pilas marcadas como SOLVITA Pendiente');
