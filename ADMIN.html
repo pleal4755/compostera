@@ -738,7 +738,7 @@ td.hi{background:var(--ms6)}
     <div class="sc" id="sc-pilas">
       <div style="display:flex;gap:7px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
         <select id="flt-est" onchange="rPilas()" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd2);border-radius:var(--r);background:#fff;color:var(--ink)">
-          <option value="">Todos los estados</option><option>Activa</option><option>En Maduración</option><option>SOLVITA Pendiente</option><option>SOLVITA Aprobado</option><option>Finalizada</option>
+          <option value="">Todos los estados</option><option>Activa</option><option>En Maduración</option><option>SOLVITA Pendiente</option><option>SOLVITA Aprobado</option><option>Despachada</option><option>Finalizada</option>
         </select>
         <span style="font-size:11px;color:var(--ink4);font-style:italic">Clic en <i class="ti ti-transfer" style="color:var(--sk)"></i> para ver movimientos · Hover en <span style="background:var(--sk4);color:var(--sk);border:1px solid var(--sk3);border-radius:8px;padding:1px 6px;font-size:10px">i</span> para desglose de costos</span>
       </div>
@@ -968,6 +968,7 @@ function gsCargarTodo(){
       // Solo se calcula costo para actividades cuyo operario CERRÓ TURNO ese día.
       recalcularCostosConProrrateo();
       GS_LISTO=true;
+      sincronizarEstadoDespachadas();
       console.log('[GS] Datos cargados de la nube: '+DB.pilas.length+' pilas, '+DB.acts.length+' acts, '+DB.mons.length+' mons.');
       return true;
     });
@@ -1140,7 +1141,7 @@ const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación',destino:'pila'},{id
   {id:'l19',n:'Limpieza de áreas',cat:'General',destino:'general'},
   {id:'l20',n:'Tareas varias',cat:'General',destino:'general'}
 ];
-const ESTADOS=['Activa','En Maduración','SOLVITA Pendiente','SOLVITA Aprobado','Finalizada'];
+const ESTADOS=['Activa','En Maduración','SOLVITA Pendiente','SOLVITA Aprobado','Despachada','Finalizada'];
 const EC=['#3D5A2C','#6B9A4A','#C17B2A','#2A5C7A'];
 
 function initDB(){
@@ -1425,12 +1426,15 @@ function stV(p,f){const d=dsv(p,f),qv=fv(p);if(d>=qv+1)return'venc';if(d>=qv)ret
 function stM(p,f){const d=dsm(p,f),qm=fm(p);if(d>=qm+1)return'venc';if(d>=qm)return'hoy';if(d>=qm-2)return'prox';return'ok';}
 function urg(p,f){const o={venc:0,hoy:1,prox:2,ok:3};return Math.min(o[stV(p,f)],o[stM(p,f)]);}
 function pep(){return DB.pilas.filter(p=>ESTADOS.includes(p.estado));}
+// "Vigente" = todavía relevante para planificación diaria (volteos, monitoreo,
+// alertas, SOLVITA) — ni Finalizada ni Despachada (ya no tiene saldo).
+function pilaVigente(p){return p.estado!=='Finalizada' && p.estado!=='Despachada';}
 
 function alKey(pila,msg){return pila+'||'+msg;}
 function als(){
   var c=DB.cfg,al=[];
   var leidas=DB.alertasLeidas||{};
-  pep().filter(function(p){return p.estado!=='Finalizada';}).forEach(function(p){
+  pep().filter(pilaVigente).forEach(function(p){
     var pl=pp(p.cod);
     var push=function(tipo,msg){
       var key=alKey(p.cod,msg);
@@ -1469,7 +1473,7 @@ function limpiarLeidas(){
   toast('Alertas restauradas');
 }
 
-function eb(e){const m={Activa:'bg','En Maduración':'bb','SOLVITA Pendiente':'ba','SOLVITA Aprobado':'bgy',Finalizada:'bpu'};return '<span class="badge '+(m[e]||'bgy')+'">'+e+'</span>';}
+function eb(e){const m={Activa:'bg','En Maduración':'bb','SOLVITA Pendiente':'ba','SOLVITA Aprobado':'bgy',Despachada:'bpu',Finalizada:'bpu'};return '<span class="badge '+(m[e]||'bgy')+'">'+e+'</span>';}
 function tbadge(v){if(v===null||v===undefined)return '<span class="badge bgy">—</span>';const c=DB.cfg;if(v<c.tmin)return '<span class="badge bb">'+fN(v,1)+'°F</span>';if(v>c.tmax)return '<span class="badge br2">'+fN(v,1)+'°F</span>';return '<span class="badge bg">'+fN(v,1)+'°F</span>';}
 
 function nav(sec){
@@ -1879,6 +1883,20 @@ function rPilas(){
 
 function chEst(c,e){const p=DB.pilas.find(x=>x.cod===c);if(p){p.estado=e;gsEditar('pilas','cod',c,clonReg(p));}sv();render();toast(c+' → '+e);}
 
+// Corrige pilas que ya no tienen saldo (100% trasladadas o despachadas) pero
+// se quedaron con un estado de "todavía en proceso" (Activa, SOLVITA
+// Aprobado, etc.) porque nadie las pasó a mano a "Finalizada". Se corre en
+// cada carga — con datos reales de sesión 2026-09-18 corrigió 66 pilas.
+// No toca "Finalizada" (estado manual, ya es terminal).
+function sincronizarEstadoDespachadas(){
+  DB.pilas.forEach(function(p){
+    if(p.estado!=='Despachada' && p.estado!=='Finalizada' && tmD(p)<=0.01){
+      p.estado='Despachada';
+      gsEditar('pilas','cod',p.cod,clonReg(p));
+    }
+  });
+}
+
 function rActs(){
   var tb2=document.getElementById('acts-tb');
   var flt=(document.getElementById('flt-acts-pila')?document.getElementById('flt-acts-pila').value:'').toLowerCase().trim();
@@ -2065,7 +2083,7 @@ function delDs(id){if(!confirm('¿Eliminar?'))return;DB.desps=DB.desps.filter(fu
 
 function eqO(){return DB.eqs.map(function(e){return'<option value="'+e.id+'">'+e.n+'</option>';}).join('');}
 function labO(){return DB.labs.map(function(l){return'<option value="'+l.n+'">'+l.n+'</option>';}).join('');}
-function cAct(){return pep().filter(function(p){return p.estado!=='Finalizada';}).map(function(p){return'<option value="'+p.cod+'">'+p.cod+'</option>';}).join('');}
+function cAct(){return pep().filter(pilaVigente).map(function(p){return'<option value="'+p.cod+'">'+p.cod+'</option>';}).join('');}
 function cTods(){return DB.pilas.map(function(p){return'<option value="'+p.cod+'">'+p.cod+' — '+p.estado+'</option>';}).join('');}
 function genCod(){DB.cnt=(DB.cnt||0)+1;gsGuardarCatalogo('cnt',DB.cnt);return new Date().getFullYear()+'-'+String(DB.cnt).padStart(3,'0');}
 // Previsualiza el próximo código autogenerado SIN consumir el contador.
@@ -2960,7 +2978,7 @@ function rKanbanPlanBar(){
 
 function sugerirKanban(){
   var f=pf,cnt=0;
-  pep().filter(function(p){return p.estado!=='Finalizada';})
+  pep().filter(pilaVigente)
     .filter(function(p){return urgV(p,f)==='venc'||urgV(p,f)==='hoy';})
     .forEach(function(p){
       if(!kanbanPlan[p.cod]){
@@ -3588,7 +3606,7 @@ function rSolvita(){
 
 function rKanbanSolv(){
   var qs=(document.getElementById('srch-solv')?document.getElementById('srch-solv').value:'').toLowerCase();
-  var pilas=DB.pilas.filter(function(p){return p.estado!=='Finalizada';});
+  var pilas=DB.pilas.filter(pilaVigente);
   if(qs) pilas=pilas.filter(function(p){return p.cod.toLowerCase().indexOf(qs)>=0;});
 
   var grupos={candidata:[],pendiente:[],no_lista:[]};
@@ -5214,7 +5232,7 @@ function fmtFecha(d){
 function imprimirHojaLabores(){
   var cods=Object.keys(kanbanPlan);
   if(!cods.length){
-    pep().filter(function(p){return p.estado!=='Finalizada';})
+    pep().filter(pilaVigente)
       .filter(function(p){var u=urgV(p,pf);return u==='venc'||u==='hoy';})
       .forEach(function(p){
         var bk=DB.eqs.find(function(e){return e.n==='Backhus 1';});
@@ -5451,7 +5469,7 @@ function generarImpresionLabores(){
 function imprimirHojaMonitoreo(){
   var cods=Object.keys(kanbanMonPlan);
   if(!cods.length){
-    pep().filter(function(p){return p.estado!=='Finalizada';})
+    pep().filter(pilaVigente)
       .filter(function(p){var u=urgM(p,pfMon);return u==='venc'||u==='hoy';})
       .forEach(function(p){kanbanMonPlan[p.cod]=true;});
     cods=Object.keys(kanbanMonPlan);
