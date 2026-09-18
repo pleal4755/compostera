@@ -710,7 +710,6 @@ td.hi{background:var(--ms6)}
             <button class="btn sm" onclick="sugerirTodosSolv()"><i class="ti ti-wand"></i> Seleccionar candidatas</button>
             <button class="btn sm dl" onclick="limpiarSolv()"><i class="ti ti-trash"></i></button>
             <button class="btn pr sm" onclick="confirmarSolv()"><i class="ti ti-check"></i> Registrar análisis SOLVITA</button>
-            <button class="btn sm" onclick="aprobarTodasPendientes()" style="background:var(--ms6);border-color:var(--ms5);color:var(--ms)"><i class="ti ti-circle-check"></i> Liberar pendientes</button>
           </div>
         </div>
       </div>
@@ -892,7 +891,7 @@ let   GS_LISTO = false;   // se vuelve true cuando ya cargó de la nube
 // Campos numéricos por hoja (para convertir texto->número al leer de Sheets)
 const GS_NUM = {
   pilas:['ca','tr','tmc'],
-  acts :['horas','ch','cost'],
+  acts :['horas','ch','cost','co2','nh3'],
   mons :['t1','t2','t3','t4','prom','hum'],
   movs :['tm','dist','ct','costEq','costCamion','t1','t2','t3','prom','hum','pct'],
   desps:['tm','precio'],
@@ -1802,7 +1801,7 @@ function rActs(){
   tb2.innerHTML=data.map(function(a,i){
     return '<tr><td>'+(i+1)+'</td>'
       +'<td><strong style="color:var(--ms2)">'+a.pila+'</strong></td>'
-      +'<td>'+fmt(a.fecha)+'</td><td>'+a.labor+'</td>'
+      +'<td>'+fmt(a.fecha)+'</td><td>'+a.labor+badgeSolvResultado(a)+'</td>'
       +'<td>'+(a.equipo||'—')+'</td><td>'+fN(a.horas,2)+'</td>'
       +'<td>'+fM(a.ch)+'</td><td><strong>'+fM(a.cost)+'</strong></td>'
       +'<td>'+(a.op||'—')+'</td>'
@@ -3590,22 +3589,63 @@ function sugerirTodosSolv(){
   rKanbanSolv();
 }
 
+// Badge compacto con el resultado del kit (CO2/NH3/liberado) para una actividad
+// "Análisis SOLVITA" ya leída. Sin resultado (aún pendiente de lectura) no muestra nada.
+function badgeSolvResultado(a){
+  if(a.labor!=='Análisis SOLVITA' || a.co2==null || a.nh3==null) return '';
+  var lib=a.liberado==='si';
+  return ' <span class="badge '+(lib?'bg':'ba')+'" style="margin-left:4px" title="'+(lib?'Liberado':'No liberado')+'">'
+    +'CO2 '+a.co2+' · NH3 '+a.nh3+' · '+(lib?'Liberado':'No liberado')+'</span>';
+}
+
+// Busca la actividad "Análisis SOLVITA" más reciente de una pila sin resultado
+// todavía leído (para adjuntarle CO2/NH3 al aprobar). Si no encuentra ninguna
+// (caso raro), usa la más reciente de todas como respaldo.
+function actaSolvPendiente(cod){
+  var acts=DB.acts.filter(function(a){return a.pila===cod&&a.labor==='Análisis SOLVITA';})
+    .sort(function(a,b){return String(b.fecha||'').localeCompare(String(a.fecha||''));});
+  return acts.find(function(a){return a.co2==null;}) || acts[0] || null;
+}
+
 function marcarAprobadaSolv(cod){
   var p=DB.pilas.find(function(x){return x.cod===cod;});
   if(!p)return;
-  if(!confirm('Pila '+cod+': ¿marcar SOLVITA como Aprobado y liberar para despacho/traslado?'))return;
-  p.estado='SOLVITA Aprobado';
-  gsEditar('pilas','cod',cod,clonReg(p));
-  sv();rKanbanSolv();render();
-  toast(cod+' → SOLVITA Aprobado, liberada para despacho/traslado');
+  document.getElementById('mtit').textContent='Resultado SOLVITA — '+cod;
+  document.getElementById('mbody').innerHTML=
+    '<div class="ap ap-i" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div>Ingrese el resultado del kit para <strong>'+cod+'</strong>.</div></div>'
+    +'<div class="fg2">'
+    +'<div class="fg"><label>CO2 (1 a 8) <span class="req">*</span></label><input type="number" id="sv-co2" min="1" max="8" step="1"></div>'
+    +'<div class="fg"><label>NH3 (1 a 5) <span class="req">*</span></label><input type="number" id="sv-nh3" min="1" max="5" step="1"></div>'
+    +'<div class="fg full"><label>¿Liberado para despacho/traslado?</label>'
+      +'<select id="sv-liberado"><option value="si">Sí — pasa a SOLVITA Aprobado</option><option value="no">No — sigue madurando</option></select></div>'
+    +'</div>'
+    +'<div class="fa"><button class="btn" onclick="closeM()">Cancelar</button>'
+    +'<button class="btn pr" onclick="guardarResultadoSolv('+q(cod)+')"><i class="ti ti-check"></i> Guardar</button></div>';
+  document.getElementById('mover').classList.add('op');
 }
-function aprobarTodasPendientes(){
-  var pend=DB.pilas.filter(function(p){return p.estado==='SOLVITA Pendiente';});
-  if(!pend.length){toast('No hay pilas con SOLVITA Pendiente','wn');return;}
-  if(!confirm('¿Aprobar SOLVITA de '+pend.length+' pila'+(pend.length!==1?'s':'')+' y liberarlas para despacho/traslado?'))return;
-  pend.forEach(function(p){p.estado='SOLVITA Aprobado';gsEditar('pilas','cod',p.cod,clonReg(p));});
-  sv();rKanbanSolv();render();
-  toast(pend.length+' pilas → SOLVITA Aprobado');
+
+function guardarResultadoSolv(cod){
+  var p=DB.pilas.find(function(x){return x.cod===cod;});
+  if(!p){toast('Pila no encontrada','er');return;}
+  var co2=parseFloat(document.getElementById('sv-co2').value);
+  var nh3=parseFloat(document.getElementById('sv-nh3').value);
+  if(isNaN(co2)||co2<1||co2>8){toast('CO2 inválido (1 a 8)','wn');return;}
+  if(isNaN(nh3)||nh3<1||nh3>5){toast('NH3 inválido (1 a 5)','wn');return;}
+  var liberado=document.getElementById('sv-liberado').value==='si';
+  var act=actaSolvPendiente(cod);
+  if(act){
+    act.co2=co2; act.nh3=nh3; act.liberado=liberado?'si':'no';
+    gsEditar('acts','id',act.id,clonReg(act));
+  } else {
+    // Respaldo: no había acta de registro (caso raro) — se crea una con el resultado.
+    DB.acts.push({id:Date.now().toString()+Math.random(),pila:cod,fecha:td(),labor:'Análisis SOLVITA',
+      equipo:'',eqId:'',horas:0,ch:0,cost:0,op:'',obs:'resultado registrado sin acta de inicio',
+      co2:co2,nh3:nh3,liberado:liberado?'si':'no'});
+  }
+  p.estado=liberado?'SOLVITA Aprobado':'Activa';
+  gsEditar('pilas','cod',cod,clonReg(p));
+  sv(); closeM(); rKanbanSolv(); rActs(); render();
+  toast(cod+(liberado?' → SOLVITA Aprobado, liberada para despacho/traslado':' → resultado registrado, sigue madurando'));
 }
 function limpiarSolv(){
   kanbanSolvPlan = {};
