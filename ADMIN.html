@@ -1733,7 +1733,8 @@ function rDash(){
         +'</tr>';
     }).join('')+montRows;
   }
-  tb2.innerHTML=ep.map(p=>{
+  var epTabla=ep.filter(pilaVigente);
+  tb2.innerHTML=epTabla.map(p=>{
     const lmm=lm(p.cod),lvv=lv(p.cod);
     const d=tmD(p),ft=tmFin(p),cm=ctm(p);
     return '<tr>'
