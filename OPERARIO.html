@@ -213,11 +213,13 @@ const GS_TOKEN = 'compostera2026';
 // Estado en memoria
 let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{}, eqs:[], sectores:[], monts:[] };
 
-// Control de labores del Cargador Frontal (sesión 2026-09-18). "destino" dice
-// a dónde va el costo: 'pila' (la pila elegida), 'traslado' (no genera costo
-// hasta que el admin formaliza el traslado con TM en ADMIN.html — aquí solo
-// queda la nota de origen/destino y las horas), 'despacho' o 'general'
-// (categorías propias, no ligadas a ninguna pila). "dir" solo aplica a los
+// Control de labores del Cargador Frontal (sesión 2026-09-18, ajustado
+// 2026-09-18b). "destino" dice a dónde va el costo: 'pila' (la pila
+// elegida), 'traslado' (no genera costo hasta que el admin formaliza el
+// traslado con TM en ADMIN.html — aquí solo queda la nota de origen/destino
+// y las horas), 'origen' (se carga directo a la pila o montículo que el
+// operario elija como origen, igual que 'pila') o 'general' (categoría
+// "Gastos generales", no ligada a ninguna pila). "dir" solo aplica a los
 // traslados: p2p=pila→pila, p2m=pila→montículo, m2p=montículo→pila.
 const CC_LABORES = [
   {n:'Formación de pila', destino:'pila'},
@@ -226,7 +228,7 @@ const CC_LABORES = [
   {n:'Traslado de pila', destino:'traslado', dir:'p2p'},
   {n:'Almacenamiento', destino:'traslado', dir:'p2m'},
   {n:'Pre despacho', destino:'traslado', dir:'m2p'},
-  {n:'Despacho', destino:'despacho'},
+  {n:'Despacho', destino:'origen'},
   {n:'Traslado de máquina', destino:'general'},
   {n:'Manejo de trash', destino:'general'},
   {n:'Limpieza de áreas', destino:'general'},
@@ -720,6 +722,22 @@ function pilasDelDiaOpts(){
   return c.length ? c.map(function(x){return '<option value="'+x+'">'+x+'</option>';}).join('')
     : '<option value="">(sin pilas asignadas hoy)</option>';
 }
+// Pilas de predespacho activas (código empieza con "PD-") — existen para
+// recibir horas de "Pre despacho" aunque no tengan tareas asignadas todavía,
+// así que se ofrecen aparte de "pilas del día".
+function pilasPredespacho(){
+  return (DATOS.pilas||[]).filter(function(p){
+    return p.cod && p.cod.indexOf('PD-')===0 && p.estado!=='Finalizada' && p.estado!=='Despachada';
+  }).map(function(p){return p.cod;});
+}
+// Para el destino de "Pre despacho": pilas del día + pilas de predespacho,
+// sin duplicar.
+function pilasDestinoPreDespachoOpts(){
+  var c={}; pilasDelDia().forEach(function(x){c[x]=true;}); pilasPredespacho().forEach(function(x){c[x]=true;});
+  var cods=Object.keys(c);
+  return cods.length ? cods.map(function(x){return '<option value="'+x+'">'+x+'</option>';}).join('')
+    : '<option value="">(sin pilas disponibles)</option>';
+}
 function monticulosOpts(){
   var m=DATOS.monts||[];
   return m.length ? m.map(function(x){return '<option value="'+x.id+'">'+x.n+'</option>';}).join('')
@@ -759,10 +777,10 @@ function renderTargetOA(){
         '<div class="campo"><label>Montículo destino</label><select id="oa-destino">'+monticulosOpts()+'</select></div>';
     } else {
       el.innerHTML='<div class="campo"><label>Montículo origen</label><select id="oa-origen">'+monticulosOpts()+'</select></div>'+
-        '<div class="campo"><label>Pila destino</label><select id="oa-destino">'+pilasDelDiaOpts()+'</select></div>';
+        '<div class="campo"><label>Pila destino</label><select id="oa-destino">'+pilasDestinoPreDespachoOpts()+'</select></div>';
     }
     el.innerHTML+='<div style="background:#fff8e1;border-radius:8px;padding:10px;font-size:12px;color:#7a5a10;margin-top:2px">⚠️ Esto NO mueve TM todavía — solo queda la nota para que el admin formalice el traslado en ADMIN.html.</div>';
-  } else if(lab.destino==='despacho'){
+  } else if(lab.destino==='origen'){
     el.innerHTML='<div class="campo"><label>¿De dónde salió?</label>'+
       '<select id="oa-origen-tipo" onchange="renderOrigenDespacho()"><option value="pila">Pila</option><option value="monticulo">Montículo</option></select></div>'+
       '<div id="oa-origen-wrap"></div>';
@@ -775,7 +793,7 @@ function renderOrigenDespacho(){
   var tipo=document.getElementById('oa-origen-tipo').value;
   var el=document.getElementById('oa-origen-wrap');
   if(!el) return;
-  el.innerHTML='<div class="campo"><label>'+(tipo==='pila'?'Pila':'Montículo')+' de origen</label><select id="oa-origen">'+(tipo==='pila'?pilasDelDiaOpts():monticulosOpts())+'</select></div>';
+  el.innerHTML='<div class="campo"><label>'+(tipo==='pila'?'Pila':'Montículo')+' de origen</label><select id="oa-origen">'+(tipo==='pila'?pilasDestinoPreDespachoOpts():monticulosOpts())+'</select></div>';
 }
 function calcHorasOA(){
   var hi=parseFloat(document.getElementById('oa-hi').value);
@@ -801,10 +819,10 @@ function guardarOtraActividad(){
     if(!origen||!destino){ toast('Elige origen y destino','err'); return; }
     if(origen===destino){ toast('Origen y destino no pueden ser iguales','err'); return; }
     obsFinal='De '+origen+' a '+destino+(obs?(' · '+obs):'')+' — pendiente de formalizar TM en ADMIN.';
-  } else if(lab.destino==='despacho'){
+  } else if(lab.destino==='origen'){
     var origenD=document.getElementById('oa-origen').value;
     if(!origenD){ toast('Elige el origen','err'); return; }
-    obsFinal='Origen: '+origenD+(obs?(' · '+obs):'');
+    pila=origenD;
   }
   bloquear(true);
   var reg={

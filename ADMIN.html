@@ -731,6 +731,7 @@ td.hi{background:var(--ms6)}
         <button class="btn" onclick="openFormMont('camion')"><i class="ti ti-truck"></i> Registrar camión del día</button>
         <button class="btn" onclick="openFormMont('despacho')"><i class="ti ti-package-export"></i> Despachar desde montículo</button>
         <button class="btn tl" onclick="openFormMont('pila')"><i class="ti ti-plant-2"></i> Formar pila desde montículo</button>
+        <button class="btn tl" onclick="openFormMont('predespacho')"><i class="ti ti-truck-loading"></i> Crear pila de predespacho</button>
       </div>
       <div id="monts-wrap"></div>
     </div>
@@ -963,6 +964,7 @@ function gsCargarTodo(){
       if(cat.monts)   DB.monts=cat.monts;
       if(cat.camiones)DB.camiones=cat.camiones;
       if(typeof cat.cnt==='number') DB.cnt=cat.cnt;
+      if(typeof cat.cntPD==='number') DB.cntPD=cat.cntPD;
       if(cat.alertasLeidas) DB.alertasLeidas=cat.alertasLeidas;
       // Recálculo de costos con prorrateo por turno (Etapa 4)
       // Solo se calcula costo para actividades cuyo operario CERRÓ TURNO ese día.
@@ -1131,17 +1133,19 @@ const DEQ=[{id:'e1',n:'Cargador Frontal',c:45,h:[{f:'2026-01-01',c:45}]},{id:'e2
   {id:'e1cf3',n:'Cargador 3',c:45,h:[{f:'2026-09-18',c:45}]}
 ];
 const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación',destino:'pila'},{id:'l2',n:'Volteo',cat:'Volteo'},{id:'l3',n:'Riego + Volteo',cat:'Volteo'},{id:'l4',n:'Riego',cat:'Riego'},{id:'l5',n:'Traslado',cat:'Movimiento'},{id:'l6',n:'Inspección general',cat:'Monitoreo'},{id:'l7',n:'Monitoreo temperatura',cat:'Monitoreo'},{id:'l8',n:'Despacho parcial',cat:'Despacho'},{id:'l9',n:'Despacho total',cat:'Despacho'},{id:'l10',n:'Análisis SOLVITA',cat:'Control de calidad'},
-  // Control de labores del Cargador Frontal (sesión 2026-09-18). "destino" indica
-  // a dónde va el costo de esa labor: 'pila' (a la pila elegida), 'traslado' (no
-  // genera acts — abre el traslado orig→dest ya existente, según "dir"), 'despacho'
-  // (categoría propia "Costo de despacho", aparte de cualquier pila) o 'general'
-  // (categoría "Gastos generales" de la compostera, tampoco ligada a ninguna pila).
+  // Control de labores del Cargador Frontal (sesión 2026-09-18, ajustado
+  // 2026-09-18b). "destino" indica a dónde va el costo de esa labor:
+  // 'pila' (a la pila elegida), 'traslado' (no genera acts — abre el
+  // traslado orig→dest ya existente, según "dir"), 'origen' (a la pila O
+  // montículo que el operario elija como origen — se le carga el costo
+  // directo, igual que 'pila') o 'general' (categoría "Gastos generales"
+  // de la compostera, no ligada a ninguna pila).
   {id:'l11',n:'Apilado',cat:'Apilado',destino:'pila'},
   {id:'l12',n:'Manejo',cat:'Manejo',destino:'pila'},
   {id:'l13',n:'Traslado de pila',cat:'Traslado',destino:'traslado',dir:'p2p'},
   {id:'l14',n:'Almacenamiento',cat:'Traslado',destino:'traslado',dir:'p2m'},
   {id:'l15',n:'Pre despacho',cat:'Traslado',destino:'traslado',dir:'m2p'},
-  {id:'l16',n:'Despacho',cat:'Despacho',destino:'despacho'},
+  {id:'l16',n:'Despacho',cat:'Despacho',destino:'origen'},
   {id:'l17',n:'Traslado de máquina',cat:'General',destino:'general'},
   {id:'l18',n:'Manejo de trash',cat:'General',destino:'general'},
   {id:'l19',n:'Limpieza de áreas',cat:'General',destino:'general'},
@@ -1464,14 +1468,53 @@ function als(){
   });
   return al;
 }
+// Alertas de "TM pendiente de ingresar" — SEPARADAS de las alertas de labores
+// (als()) a propósito: son sobre el ciclo administrativo (horas cargadas,
+// falta el TM real), no sobre el estado de una pila. Labores donde el
+// operario ya cargó horas pero el TM (peso de báscula / estimado) se
+// ingresa después, por separado — traslados de pila/montículo (Traslado de
+// pila, Almacenamiento, Pre despacho) y Despacho. Se marca "leída" igual
+// que cualquier otra alerta una vez que se formaliza/ingresa el TM.
+function alsTM(){
+  var al=[];
+  var leidas=DB.alertasLeidas||{};
+  DB.acts.forEach(function(a){
+    var d=labDestino(a.labor);
+    if(d!=='traslado' && a.labor!=='Despacho') return;
+    // Pre despacho hacia una pila PD-...: se resuelve solo si ya se formalizó TM.
+    if(a.labor==='Pre despacho'){
+      var m=/a (PD-[\w-]+)/.exec(a.obs||'');
+      if(m){
+        var pd=DB.pilas.find(function(x){return x.cod===m[1];});
+        if(pd && tmEn(pd.cod)>0) return;
+      }
+    }
+    // Despacho: se resuelve solo si ya existe un despacho real para esa pila,
+    // fechado el mismo día o después de las horas registradas.
+    if(a.labor==='Despacho' && a.pila){
+      var yaDespachado=DB.desps.some(function(x){return x.pila===a.pila && String(x.fecha).substring(0,10)>=String(a.fecha).substring(0,10);});
+      if(yaDespachado) return;
+    }
+    var key=alKey(a.id,'tm-pendiente');
+    if(leidas[key]) return;
+    var detalle=(a.obs||'').replace(' — pendiente de formalizar TM en ADMIN.','');
+    al.push({tipo:'warn', pila:(a.pila||a.labor), msg:'TM pendiente de ingresar — '+a.labor+' del '+fmt(a.fecha)+(detalle?': '+detalle:''), key:key});
+  });
+  return al;
+}
 function marcarLeida(key){
   if(!DB.alertasLeidas) DB.alertasLeidas={};
   DB.alertasLeidas[key]=td();
   sv();updB();rAl();
 }
-function marcarTodasLeidas(){
+function marcarTodasLeidasLabores(){
   if(!DB.alertasLeidas) DB.alertasLeidas={};
   als().forEach(function(a){DB.alertasLeidas[a.key]=td();});
+  sv();updB();rAl();
+}
+function marcarTodasLeidasTM(){
+  if(!DB.alertasLeidas) DB.alertasLeidas={};
+  alsTM().forEach(function(a){DB.alertasLeidas[a.key]=td();});
   sv();updB();rAl();
 }
 function limpiarLeidas(){
@@ -1517,7 +1560,7 @@ function render(){
     catch(e){ console.error('[render] '+e.message, e.stack||''); }
   });
 }
-function updB(){const n=als().length;const b=document.getElementById('nbg');if(n){b.style.display='';b.textContent=n;}else b.style.display='none';}
+function updB(){const n=als().length+alsTM().length;const b=document.getElementById('nbg');if(n){b.style.display='';b.textContent=n;}else b.style.display='none';}
 
 // Helpers de semana (lunes a domingo de la semana actual)
 function inicioSemana(){
@@ -1565,14 +1608,14 @@ function rDash(){
   const actConSaldo=act.filter(p=>tmD(p)>0.01);
   const tFr=act.reduce((s,p)=>s+tmF(p),0),tDi=ep.reduce((s,p)=>s+tmD(p),0),tFi=fin.reduce((s,p)=>s+tmD(p),0);
   const tMont=DB.monts.reduce(function(s,m){return s+montTmD(m.id);},0);
-  const al=als(),dn=al.filter(a=>a.tipo==='danger').length;
+  const al=als(),alTM=alsTM(),dn=al.filter(a=>a.tipo==='danger').length,totAl=al.length+alTM.length;
 
   // ── KPIs rápidos (fila superior compacta) ──
   document.getElementById('kr').innerHTML=
     '<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas activas</div><div class="kv">'+actConSaldo.length+'</div></div>'
     +'<div class="kpi ok"><div class="kl"><i class="ti ti-stack-3"></i> TM disponibles</div><div class="kv">'+fN(tDi,1)+' <span class="ku">TM</span></div></div>'
     +'<div class="kpi pu"><div class="kl"><i class="ti ti-package"></i> TM producto listo</div><div class="kv">'+fN(tFi+tMont,1)+' <span class="ku">TM</span></div></div>'
-    +'<div class="kpi '+(dn?'dn':al.length?'wn':'ok')+'"><div class="kl"><i class="ti ti-bell"></i> Alertas</div><div class="kv">'+al.length+'</div></div>';
+    +'<div class="kpi '+(dn?'dn':totAl?'wn':'ok')+'"><div class="kl"><i class="ti ti-bell"></i> Alertas</div><div class="kv">'+totAl+'</div></div>';
 
   // ════════ BLOQUE 1 — Inventario por etapa ════════
   // Agrupar TM disponibles de pilas en proceso por etapa de madurez
@@ -1706,18 +1749,20 @@ function rDash(){
       +'<div class="cc-sub">ponderado por TM despachada</div></div>';
 
   // ════════ BLOQUE 5 — Costos que no pertenecen a ninguna pila ════════
-  // Labores del Cargador Frontal marcadas "despacho" o "general" (ver DLAB):
-  // no se prorratean al $/TM de ninguna pila, se muestran aparte. Acumulado
-  // total (no por período) — es costo operativo corriente, no de una pila.
-  var costoDespachoOp=costoActsDestino('despacho');
+  // Labores del Cargador Frontal marcadas "general" (ver DLAB): no se
+  // prorratean al $/TM de ninguna pila. "Despacho" ya no cae aquí — desde
+  // el ajuste 2026-09-18b su costo se carga directo a la pila/montículo de
+  // origen (destino:'origen'), igual que Apilado/Manejo.
   var costoGeneral=costoActsDestino('general');
+  var pilasPD=DB.pilas.filter(esPredespacho).filter(pilaVigente);
+  var tmPD=pilasPD.reduce(function(s,p){return s+tmD(p);},0);
   document.getElementById('dash-generales').innerHTML=
-    '<div class="cost-card"><div class="cc-l"><i class="ti ti-truck-loading"></i> Costo de despacho</div>'
-      +'<div class="cc-v" style="font-size:18px">'+(costoDespachoOp>0?fM(costoDespachoOp):'—')+'</div>'
-      +'<div class="cc-sub">labor de carga — no se liga a una pila</div></div>'
-    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-tool"></i> Gastos generales</div>'
+    '<div class="cost-card"><div class="cc-l"><i class="ti ti-tool"></i> Gastos generales</div>'
       +'<div class="cc-v" style="font-size:18px">'+(costoGeneral>0?fM(costoGeneral):'—')+'</div>'
-      +'<div class="cc-sub">limpieza, trash, traslados de máquina</div></div>';
+      +'<div class="cc-sub">limpieza, trash, traslados de máquina</div></div>'
+    +'<div class="cost-card"><div class="cc-l"><i class="ti ti-truck-loading"></i> Pilas de predespacho</div>'
+      +'<div class="cc-v">'+pilasPD.length+'</div>'
+      +'<div class="cc-sub">'+fN(tmPD,1)+' TM en preparación</div></div>';
 
   // ── Tabla detallada de pilas (igual que antes) ──
   const tb2=document.getElementById('dash-tb');
@@ -1763,22 +1808,16 @@ function rDash(){
   }).join('');
 }
 
-function rAl(){
-  var al=als(),w=document.getElementById('al-wrap');
+// Dibuja una sección de alertas independiente (con su propio "marcar todas
+// leídas", que solo afecta esa lista — nunca la otra sección).
+function seccionAlertas(titulo,icono,lista,fnMarcarTodas){
   var tp={danger:{c:'ap-d',i:'ti-alert-circle'},warn:{c:'ap-w',i:'ti-alert-triangle'},info:{c:'ap-i',i:'ti-info-circle'}};
-  var leidas=Object.keys(DB.alertasLeidas||{}).length;
-  var header='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
-    +'<span style="font-size:12px;color:var(--ink3)"><strong>'+al.length+'</strong> alerta'+(al.length!==1?'s':'')+' activa'+(al.length!==1?'s':'')
-    +(leidas?' &nbsp;·&nbsp; <span style="color:var(--ink4)">'+leidas+' leída'+(leidas!==1?'s':'')+'</span>':'')+'</span>'
-    +'<div style="display:flex;gap:6px">'
-    +(al.length?'<button class="btn sm pr" onclick="marcarTodasLeidas()"><i class="ti ti-checks"></i> Marcar todas leídas</button>':'')
-    +(leidas?'<button class="btn sm" onclick="limpiarLeidas()" style="color:var(--ink4)"><i class="ti ti-refresh"></i> Restaurar leídas</button>':'')
-    +'</div></div>';
-  if(!al.length){
-    w.innerHTML=header+'<div class="ap ap-ok"><i class="ti ti-circle-check"></i><div>Sin alertas activas.'+(leidas?' ('+leidas+' marcada'+(leidas!==1?'s':'')+' como leída'+(leidas!==1?'s':'')+')':'')+'</div></div>';
-    return;
-  }
-  w.innerHTML=header+al.map(function(a){
+  var header='<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px;flex-wrap:wrap;gap:6px">'
+    +'<span style="font-size:13px;font-weight:700;color:var(--ink2)"><i class="ti '+icono+'"></i> '+titulo+' — <strong>'+lista.length+'</strong> activa'+(lista.length!==1?'s':'')+'</span>'
+    +(lista.length?'<button class="btn sm pr" onclick="'+fnMarcarTodas+'()"><i class="ti ti-checks"></i> Marcar todas leídas</button>':'')
+    +'</div>';
+  if(!lista.length) return header+'<div class="ap ap-ok"><i class="ti ti-circle-check"></i><div>Sin alertas activas.</div></div>';
+  return header+lista.map(function(a){
     return '<div class="ap '+tp[a.tipo].c+'" style="justify-content:space-between">'
       +'<div style="display:flex;align-items:flex-start;gap:8px;flex:1">'
         +'<i class="ti '+tp[a.tipo].i+'" style="flex-shrink:0;margin-top:1px"></i>'
@@ -1789,6 +1828,16 @@ function rAl(){
       +'</button>'
     +'</div>';
   }).join('');
+}
+function rAl(){
+  var al=als(),alTM=alsTM(),w=document.getElementById('al-wrap');
+  var leidas=Object.keys(DB.alertasLeidas||{}).length;
+  var topHeader='<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px">'
+    +(leidas?'<button class="btn sm" onclick="limpiarLeidas()" style="color:var(--ink4)"><i class="ti ti-refresh"></i> Restaurar leídas ('+leidas+')</button>':'')
+    +'</div>';
+  w.innerHTML=topHeader
+    +seccionAlertas('Alertas de labores','ti-alert-triangle',al,'marcarTodasLeidasLabores')
+    +seccionAlertas('TM pendiente de ingresar','ti-scale',alTM,'marcarTodasLeidasTM');
 }
 
 function toggleMov(cod){
@@ -1879,6 +1928,7 @@ function rPilas(){
         +'<button class="btn sm" onclick="editP('+q(cod)+')" title="Editar"><i class="ti ti-edit"></i></button>'+'<button class="btn sm tl" onclick="verHistorial('+q(cod)+')" title="Historial labores"><i class="ti ti-history"></i></button>'+'<button class="btn sm" onclick="verHistorialMon('+q(cod)+')" style="background:var(--sk4);border-color:var(--sk3);color:var(--sk)" title="Historial monitoreo"><i class="ti ti-thermometer"></i></button>'+'<button class="btn sm" onclick="verAuditoria('+q(cod)+')" style="background:var(--am4);border-color:var(--am2);color:var(--am)" title="Auditoría de costos"><i class="ti ti-calculator"></i></button>'
         +'<button class="btn sm tl" onclick="toggleMov('+q(cod)+')" title="Ver movimientos"><i class="ti ti-transfer"></i>'+(nMovs>0?' '+nMovs:'')+'</button>'
         +'<button class="btn sm tl" onclick="openMov('+q(cod)+')" title="Nuevo traslado"><i class="ti ti-plus"></i></button>'
+        +(esPredespacho(p)?'<button class="btn sm" style="background:var(--am4);border-color:var(--am2);color:var(--am)" onclick="abrirFormalizarPD('+q(cod)+')" title="Formalizar TM desde el montículo"><i class="ti ti-truck-loading"></i> Formalizar TM</button>':'')
         +'<button class="btn sm dl" onclick="delP('+q(cod)+')" title="Eliminar"><i class="ti ti-trash"></i></button>'
         +'</div></td>'
       +'</tr>'
@@ -2095,6 +2145,15 @@ function cTods(){return DB.pilas.map(function(p){return'<option value="'+p.cod+'
 function genCod(){DB.cnt=(DB.cnt||0)+1;gsGuardarCatalogo('cnt',DB.cnt);return new Date().getFullYear()+'-'+String(DB.cnt).padStart(3,'0');}
 // Previsualiza el próximo código autogenerado SIN consumir el contador.
 function peekCod(){return new Date().getFullYear()+'-'+String((DB.cnt||0)+1).padStart(3,'0');}
+
+// Correlativo aparte para pilas de predespacho (PD-2026-01, PD-2026-02...) —
+// contador independiente para que no se mezclen con la secuencia de pilas
+// normales y sean reconocibles de inmediato en cualquier tabla/reporte.
+function genCodPD(){DB.cntPD=(DB.cntPD||0)+1;gsGuardarCatalogo('cntPD',DB.cntPD);return 'PD-'+new Date().getFullYear()+'-'+String(DB.cntPD).padStart(2,'0');}
+function peekCodPD(){return 'PD-'+new Date().getFullYear()+'-'+String((DB.cntPD||0)+1).padStart(2,'0');}
+// Identifica una pila de predespacho solo por el prefijo del código — sin
+// campo aparte, así no hace falta ninguna columna nueva en la hoja.
+function esPredespacho(p){return !!p && p.cod && p.cod.indexOf('PD-')===0;}
 
 function openForm(){
   eid=null;
@@ -4642,8 +4701,12 @@ function montCostoCamion(mid){
   },0);
 }
 function montCostoLabores(mid){
-  // Costo de equipo y camión individual en traslados a este montículo
-  return DB.movs.filter(function(m){return m.dest===mid;}).reduce(function(s,m){return s+(m.costEq||0)+(m.costCamion||0);},0);
+  // Costo de equipo y camión individual en traslados a este montículo, más
+  // actividades del Cargador Frontal ligadas directamente a él (ej. Despacho
+  // con origen montículo — ver DLAB, labores con destino:'origen').
+  var deMovs=DB.movs.filter(function(m){return m.dest===mid;}).reduce(function(s,m){return s+(m.costEq||0)+(m.costCamion||0);},0);
+  var deActs=DB.acts.filter(function(a){return a.pila===mid;}).reduce(function(s,a){return s+(a.cost||0);},0);
+  return deMovs+deActs;
 }
 // Costo que SALE del montículo, proporcional a las TM que salieron (despachadas +
 // enviadas a pilas formadas desde él) sobre el total recibido. Mismo criterio que en
@@ -4745,6 +4808,7 @@ function rMonts(){
         +'<button class="btn sm pr" onclick="abrirBatchTraslado('+q(m.id)+')"><i class="ti ti-transfer"></i> Trasladar pilas aquí</button>'
         +(tmDisp>0?'<button class="btn sm" onclick="openFormMont(\'despacho\','+q(m.id)+')"><i class="ti ti-package-export"></i> Despachar</button>':'')
         +(tmDisp>0?'<button class="btn sm tl" onclick="openFormMont(\'pila\','+q(m.id)+')"><i class="ti ti-plant-2"></i> Formar pila</button>':'')
+        +'<button class="btn sm tl" onclick="openFormMont(\'predespacho\','+q(m.id)+')"><i class="ti ti-truck-loading"></i> Crear pila de predespacho</button>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -4753,13 +4817,14 @@ function rMonts(){
 
 // ── Formularios de montículos ─────────────────────────────────
 function openFormMont(tipo,mid){
-  var titles={traslado:'Trasladar pila → montículo',camion:'Registrar camión del día',despacho:'Despachar desde montículo',pila:'Formar pila desde montículo'};
+  var titles={traslado:'Trasladar pila → montículo',camion:'Registrar camión del día',despacho:'Despachar desde montículo',pila:'Formar pila desde montículo',predespacho:'Crear pila de predespacho'};
   document.getElementById('mtit').textContent=titles[tipo]||tipo;
   var body='';
   if(tipo==='traslado') body=fMontTraslado(mid);
   else if(tipo==='camion') body=fMontCamion();
   else if(tipo==='despacho') body=fMontDespacho(mid);
   else if(tipo==='pila') body=fMontPila(mid);
+  else if(tipo==='predespacho') body=fMontPredespacho(mid);
   document.getElementById('mbody').innerHTML=body;
   document.getElementById('mover').classList.add('op');
 }
@@ -4980,11 +5045,13 @@ function gMontPila(){
   var mn=DB.monts.find(function(m){return m.id===mid;})||{n:mid};
   var ctm=montCtm(mid)||0;
   var costHered=Math.round(ctm*tm*100)/100;
-  // Crear nueva pila — ca=0, tr=0, tmc=tm (ya reducida), costo heredado como movimiento
+  // Crear nueva pila — ca=0, tr=0. tmc queda en 0 (no en tm): el saldo de esta
+  // pila vive en el movimiento (tmEn), igual que cualquier traslado. Ponerlo
+  // también en tmc duplicaba las TM (tmRB + tmEn sumaban el doble).
   var cod=genCod();
   DB.pilas.push({
     cod:cod,fecha:fecha,ca:0,tr:0,estado:'Activa',
-    tmc:tm,obs:'Formada desde '+mn.n+'. '+document.getElementById('f-obs').value,
+    tmc:0,obs:'Formada desde '+mn.n+'. '+document.getElementById('f-obs').value,
     fvc:null,fmc:null,_desdeMont:mid
   });
   // Registrar salida del montículo como movimiento
@@ -4996,6 +5063,96 @@ function gMontPila(){
   });
   sv();closeM();rMonts();render();
   toast('Pila '+cod+' creada desde '+mn.n+' — '+fN(tm,2)+' TM · costo heredado '+fM(costHered));
+}
+
+// ── Pilas de predespacho ──────────────────────────────────────
+// Secuencia: 1) se crea el código (vacía, sin TM/costo) · 2) el operario le
+// carga horas con la labor "Pre despacho" desde OPERARIO.html (montículo →
+// esta pila) · 3) el admin estima el TM realmente trasladado y lo formaliza
+// aquí, lo que sí transfiere costo del montículo (ver gFormalizarPD).
+function fMontPredespacho(midPref){
+  var montOpts=DB.monts.map(function(m){return'<option value="'+m.id+'" '+(m.id===midPref?'selected':'')+'>'+m.n+'</option>';}).join('');
+  return'<div class="ap ap-i" style="margin-bottom:10px"><i class="ti ti-info-circle"></i>'
+    +'Crea el código de pila (<strong>'+peekCodPD()+'</strong>) sin TM ni costo todavía. '
+    +'El operario le carga horas con la labor "Pre despacho" en el celular, y cuando sepas cuánto se trasladó, '
+    +'la formalizas desde la pestaña Pilas (botón "Formalizar TM").</div>'
+    +'<div class="fg2">'
+    +'<div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha" value="'+td()+'" max="'+td()+'"></div>'
+    +'<div class="fg full"><label>Montículo de origen <span class="req">*</span></label><select id="f-mont">'+montOpts+'</select></div>'
+    +'<div class="fg full"><label>Obs.</label><textarea id="f-obs" placeholder="Razón del predespacho..."></textarea></div>'
+    +'</div>'
+    +'<div class="fa"><button class="btn" onclick="closeM()">Cancelar</button>'
+    +'<button class="btn pr" onclick="gMontPredespacho()"><i class="ti ti-check"></i> Crear pila de predespacho</button></div>';
+}
+function gMontPredespacho(){
+  var fecha=document.getElementById('f-fecha').value;
+  var mid=document.getElementById('f-mont').value;
+  if(!fecha||!mid){toast('Complete los campos obligatorios','wn');return;}
+  var mn=DB.monts.find(function(m){return m.id===mid;})||{n:mid};
+  var cod=genCodPD();
+  DB.pilas.push({
+    cod:cod,fecha:fecha,ca:0,tr:0,estado:'Activa',
+    tmc:0,obs:'Predespacho desde '+mn.n+'. '+document.getElementById('f-obs').value,
+    fvc:null,fmc:null
+  });
+  sv();closeM();rMonts();render();
+  toast('Pila '+cod+' creada — pendiente de horas del operario y de formalizar TM desde '+mn.n);
+}
+
+// Formalizar TM: transfiere costo real del montículo a una pila de predespacho
+// ya existente (puede llamarse varias veces si el traslado se completa en
+// partes — suma al tmc y crea un mov por cada formalización).
+function abrirFormalizarPD(cod){
+  document.getElementById('mtit').textContent='Formalizar TM — '+cod;
+  document.getElementById('mbody').innerHTML=fFormalizarPD(cod);
+  document.getElementById('mover').classList.add('op');
+}
+function fFormalizarPD(cod){
+  var p=DB.pilas.find(function(x){return x.cod===cod;});if(!p)return;
+  var montOpts=DB.monts.map(function(m){return'<option value="'+m.id+'">'+m.n+' — '+fN(montTmD(m.id),2)+' TM disp. · '+fM(montCtm(m.id))+'/TM</option>';}).join('');
+  if(!montOpts) return'<div class="ap ap-i"><i class="ti ti-info-circle"></i>Sin montículos con saldo disponible.</div><div class="fa"><button class="btn" onclick="closeM()">Cerrar</button></div>';
+  return'<div class="ap ap-w" style="margin-bottom:10px"><i class="ti ti-alert-triangle"></i>'
+    +'Pila <strong>'+cod+'</strong> — TM confirmadas hasta ahora: <strong>'+fN(p.tmc||0,2)+'</strong>. Esto se suma a lo que ya tiene.</div>'
+    +'<div class="fg2">'
+    +'<div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha" value="'+td()+'" max="'+td()+'"></div>'
+    +'<div class="fg full"><label>Montículo origen <span class="req">*</span></label><select id="f-mont" onchange="pvFormalizarPD()">'+montOpts+'</select></div>'
+    +'<div class="fg"><label>TM a formalizar <span class="req">*</span></label><input type="number" id="f-tm" step="0.01" min="0.01" oninput="pvFormalizarPD()"></div>'
+    +'<div class="fg full"><div class="cv" id="pv-formalizar-pd">Seleccione montículo y TM</div></div>'
+    +'</div>'
+    +'<div class="fa"><button class="btn" onclick="closeM()">Cancelar</button>'
+    +'<button class="btn pr" onclick="gFormalizarPD('+q(cod)+')"><i class="ti ti-check"></i> Formalizar</button></div>';
+}
+function pvFormalizarPD(){
+  var mid=document.getElementById('f-mont')?document.getElementById('f-mont').value:'';
+  var tm=parseFloat(document.getElementById('f-tm')?document.getElementById('f-tm').value:0)||0;
+  var el=document.getElementById('pv-formalizar-pd');if(!el)return;
+  var d=montTmD(mid),ctm=montCtm(mid)||0;
+  var costHered=Math.round(ctm*tm*100)/100;
+  el.innerHTML='TM disp. en montículo: <strong>'+fN(d,2)+'</strong> · Costo/TM montículo: <strong>'+fM(ctm)+'</strong>'
+    +'<br>Esta pila recibirá: <strong style="color:var(--am)">'+fN(tm,2)+' TM · '+fM(costHered)+' de costo</strong>';
+}
+function gFormalizarPD(cod){
+  var p=DB.pilas.find(function(x){return x.cod===cod;});if(!p)return;
+  var fecha=document.getElementById('f-fecha').value;
+  var mid=document.getElementById('f-mont').value;
+  var tm=parseFloat(document.getElementById('f-tm').value);
+  if(!fecha||!mid||isNaN(tm)||tm<=0){toast('Complete los campos obligatorios','wn');return;}
+  var d=montTmD(mid);
+  if(tm>d){ if(tm-d<=0.05){tm=Math.round(d*1000)/1000;} else {toast('Solo hay '+fN(d,2)+' TM disponibles','wn');return;} }
+  var mn=DB.monts.find(function(m){return m.id===mid;})||{n:mid};
+  var ctm=montCtm(mid)||0;
+  var costHered=Math.round(ctm*tm*100)/100;
+  // p.tmc se deja en 0 a propósito — el saldo de esta pila vive en el
+  // movimiento (tmEn), igual que cualquier traslado. Tocar tmc aquí
+  // duplicaría el TM (mismo bug que ya se corrigió en gMontPila).
+  DB.movs.push({
+    id:Date.now().toString(),fecha:fecha,tipo:'Predespacho formalizado',
+    orig:mid,dest:cod,tm:tm,pct:1,ct:costHered,
+    equipo:'',eqId:'',horasEq:0,costEq:0,
+    obs:'Formalización de predespacho '+cod+' desde '+mn.n
+  });
+  sv();closeM();rPilas();render();
+  toast(cod+': +'+fN(tm,2)+' TM formalizadas desde '+mn.n+' — total '+fN(tmD(p),2)+' TM');
 }
 
 function delCamion(id){
