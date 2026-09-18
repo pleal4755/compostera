@@ -420,8 +420,13 @@ td.hi{background:var(--ms6)}
       <div class="dash-secttl"><i class="ti ti-calendar-check"></i> Cumplimiento de la semana <span class="wk" id="dash-wk-rango"></span></div>
       <div class="dgrid g3" id="dash-cumpl"></div>
 
-      <!-- BLOQUE 4 — Despachos de la semana -->
-      <div class="dash-secttl"><i class="ti ti-truck"></i> Despachos de la semana <span class="wk" id="dash-desp-rango"></span></div>
+      <!-- BLOQUE 4 — Despachos -->
+      <div class="dash-secttl"><i class="ti ti-truck"></i> Despachos <span class="wk" id="dash-desp-rango"></span></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+        <button class="btn sm" id="dash-desp-btn-semana" onclick="setDashDespPeriodo('semana')">Semana</button>
+        <button class="btn sm" id="dash-desp-btn-mes" onclick="setDashDespPeriodo('mes')">Mes acumulado</button>
+        <button class="btn sm" id="dash-desp-btn-anio" onclick="setDashDespPeriodo('anio')">Año acumulado</button>
+      </div>
       <div class="dgrid g4" id="dash-desp"></div>
 
       <!-- Tabla detallada de pilas -->
@@ -1473,6 +1478,27 @@ function finSemana(){
   var d=new Date(inicioSemana()+'T12:00:00'); d.setDate(d.getDate()+6);
   return d.toISOString().split('T')[0];
 }
+
+// Selector de período del bloque "Despachos" del Dashboard (independiente del
+// período fijo de "Cumplimiento", que siempre es la semana en curso).
+var dashDespPeriodo='semana';
+function setDashDespPeriodo(modo){ dashDespPeriodo=modo; rDash(); }
+function rangoDashDesp(modo){
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  function iso(d){return d.toISOString().split('T')[0];}
+  if(modo==='mes'){
+    var ini=new Date(hoy.getFullYear(),hoy.getMonth(),1);
+    var fin=new Date(hoy.getFullYear(),hoy.getMonth()+1,0);
+    return {d0:iso(ini),d1:iso(fin)};
+  }
+  if(modo==='anio'){
+    var ini2=new Date(hoy.getFullYear(),0,1);
+    var fin2=new Date(hoy.getFullYear(),11,31);
+    return {d0:iso(ini2),d1:iso(fin2)};
+  }
+  return {d0:inicioSemana(),d1:finSemana()};
+}
+
 function enRango(f,desde,hasta){
   if(!f) return false;
   var s=String(f).substring(0,10);
@@ -1481,13 +1507,17 @@ function enRango(f,desde,hasta){
 
 function rDash(){
   const ep=pep(),act=ep.filter(p=>p.estado!=='Finalizada'),fin=ep.filter(p=>p.estado==='Finalizada');
+  // "Activas" para el Dashboard = con saldo real (no basta con que el estado no
+  // diga Finalizada — una pila 100% trasladada/despachada puede seguir en
+  // "SOLVITA Aprobado" sin que nadie la pase a Finalizada a mano).
+  const actConSaldo=act.filter(p=>tmD(p)>0.01);
   const tFr=act.reduce((s,p)=>s+tmF(p),0),tDi=ep.reduce((s,p)=>s+tmD(p),0),tFi=fin.reduce((s,p)=>s+tmD(p),0);
   const tMont=DB.monts.reduce(function(s,m){return s+montTmD(m.id);},0);
   const al=als(),dn=al.filter(a=>a.tipo==='danger').length;
 
   // ── KPIs rápidos (fila superior compacta) ──
   document.getElementById('kr').innerHTML=
-    '<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas activas</div><div class="kv">'+act.length+'</div></div>'
+    '<div class="kpi"><div class="kl"><i class="ti ti-stack-2"></i> Pilas activas</div><div class="kv">'+actConSaldo.length+'</div></div>'
     +'<div class="kpi ok"><div class="kl"><i class="ti ti-stack-3"></i> TM disponibles</div><div class="kv">'+fN(tDi,1)+' <span class="ku">TM</span></div></div>'
     +'<div class="kpi pu"><div class="kl"><i class="ti ti-package"></i> TM producto listo</div><div class="kv">'+fN(tFi+tMont,1)+' <span class="ku">TM</span></div></div>'
     +'<div class="kpi '+(dn?'dn':al.length?'wn':'ok')+'"><div class="kl"><i class="ti ti-bell"></i> Alertas</div><div class="kv">'+al.length+'</div></div>';
@@ -1500,7 +1530,7 @@ function rDash(){
     {nm:'Maduración',sub:'61–90 d',col:EC[2],tm:0,n:0},
     {nm:'Enfriamiento',sub:'90+ d',col:EC[3],tm:0,n:0}
   ];
-  act.forEach(function(p){
+  actConSaldo.forEach(function(p){
     var i=eidx(p); etapas[i].tm+=tmD(p); etapas[i].n++;
   });
   document.getElementById('dash-inv-sub').textContent=fN(tDi,1)+' TM en proceso · '+fN(tFi+tMont,1)+' TM listas';
@@ -1590,8 +1620,14 @@ function rDash(){
     +complCard('Monitoreos','ti-thermometer',rm)
     +resumenGlobal;
 
-  // ════════ BLOQUE 4 — Despachos de la semana (solo costos, sin ventas/ingresos) ════════
-  var despSem=(DB.desps||[]).filter(function(d){return enRango(d.fecha,d0,d1);});
+  // ════════ BLOQUE 4 — Despachos (solo costos, sin ventas/ingresos) ════════
+  // Período independiente del de "Cumplimiento" — el usuario elige semana/mes/año.
+  var dpR=rangoDashDesp(dashDespPeriodo);
+  ['semana','mes','anio'].forEach(function(m){
+    var b=document.getElementById('dash-desp-btn-'+m);
+    if(b) b.classList.toggle('pr', m===dashDespPeriodo);
+  });
+  var despSem=(DB.desps||[]).filter(function(d){return enRango(d.fecha,dpR.d0,dpR.d1);});
   var tmDespSem=despSem.reduce(function(s,d){return s+(d.tm||0);},0);
   // Costo que salió por cada despacho: TM despachadas × tasa uniforme de su pila
   // u origen (ver tasaTM). Evita subestimar despachos viejos cuando una pila tiene
@@ -1601,14 +1637,15 @@ function rDash(){
     return s+d.tm*(tasa!=null?tasa:0);
   },0);
   var costoPromDesp= tmDespSem>0 ? costoDespSem/tmDespSem : null;
-  document.getElementById('dash-desp-rango').textContent=fmtL(d0)+' — '+fmtL(d1);
+  var lblPeriodo={semana:'esta semana',mes:'este mes',anio:'este año'}[dashDespPeriodo];
+  document.getElementById('dash-desp-rango').textContent=fmtL(dpR.d0)+' — '+fmtL(dpR.d1);
   document.getElementById('dash-desp').innerHTML=
     '<div class="cost-card accent"><div class="cc-l"><i class="ti ti-truck"></i> Despachos</div>'
       +'<div class="cc-v">'+despSem.length+'</div>'
-      +'<div class="cc-sub">registros esta semana</div></div>'
+      +'<div class="cc-sub">registros '+lblPeriodo+'</div></div>'
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-stack-3"></i> TM despachadas</div>'
       +'<div class="cc-v">'+fN(tmDespSem,1)+' <span style="font-size:14px">TM</span></div>'
-      +'<div class="cc-sub">total de la semana</div></div>'
+      +'<div class="cc-sub">total '+lblPeriodo+'</div></div>'
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-currency-dollar"></i> Costo despachado</div>'
       +'<div class="cc-v" style="font-size:18px">'+(costoDespSem>0?fM(costoDespSem):'—')+'</div>'
       +'<div class="cc-sub">costo que salió de las pilas</div></div>'
