@@ -366,6 +366,7 @@ td.hi{background:var(--ms6)}
     <div class="ns"><div class="nl">Principal</div>
       <div class="ni on" onclick="nav('dash')"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
       <div class="ni" onclick="nav('alert')"><i class="ti ti-bell"></i> Alertas <span class="nbg" id="nbg" style="display:none"></span></div>
+      <div class="ni" onclick="nav('tmpend')"><i class="ti ti-scale"></i> TM pendiente <span class="nbg" id="nbgtm" style="display:none"></span></div>
       <div class="ni" onclick="nav('planif-lab')"><i class="ti ti-tractor"></i> Plan. Labores</div>
       <div class="ni" onclick="nav('planif-mon')"><i class="ti ti-thermometer"></i> Plan. Monitoreo</div>
       <div class="ni" onclick="nav('orden-campo')"><i class="ti ti-route"></i> Orden de campo</div>
@@ -439,6 +440,7 @@ td.hi{background:var(--ms6)}
       </div>
     </div>
     <div class="sc" id="sc-alert"><div id="al-wrap"></div></div>
+    <div class="sc" id="sc-tmpend"><div id="tmpend-wrap"></div></div>
     <!-- PLANIFICADOR DE LABORES — Kanban + Hoja diaria -->
     <div class="sc sc-full" id="sc-planif-lab">
       <div style="display:flex;flex-direction:column;flex:1;min-height:0;gap:0">
@@ -1446,25 +1448,29 @@ function als(){
   var leidas=DB.alertasLeidas||{};
   pep().filter(pilaVigente).forEach(function(p){
     var pl=pp(p.cod);
-    var push=function(tipo,msg){
+    var push=function(tipo,msg,accion){
       var key=alKey(p.cod,msg);
-      if(!leidas[key]) al.push({tipo:tipo,pila:p.cod,msg:msg,key:key});
+      if(!leidas[key]) al.push({tipo:tipo,pila:p.cod,msg:msg,key:key,accion:accion});
     };
-    if(pl.pv&&pl.pv<td()) push('danger','Volteo vencido hace '+dB(pl.pv,td())+'d ('+fmt(pl.pv)+')');
-    if(pl.pm&&pl.pm<td()) push('warn','Monitoreo vencido hace '+dB(pl.pm,td())+'d');
+    var accVolteo={sec:'planif-lab',filtro:'srch-kanban',valor:p.cod};
+    var accMon={sec:'planif-mon',filtro:'srch-mon',valor:p.cod};
+    var accMonReg={sec:'mon',filtro:'flt-mon-pila',valor:p.cod};
+    var accSolv={sec:'solvita',filtro:'srch-solv',valor:p.cod};
+    if(pl.pv&&pl.pv<td()) push('danger','Volteo vencido hace '+dB(pl.pv,td())+'d ('+fmt(pl.pv)+')',accVolteo);
+    if(pl.pm&&pl.pm<td()) push('warn','Monitoreo vencido hace '+dB(pl.pm,td())+'d',accMon);
     var lmm=lm(p.cod);
     if(lmm&&lmm.prom!=null){
-      if(lmm.prom<c.tmin) push('warn','Temp. baja: '+fN(lmm.prom,1)+'°F');
-      if(lmm.prom>c.tmax) push('danger','Temp. alta: '+fN(lmm.prom,1)+'°F');
+      if(lmm.prom<c.tmin) push('warn','Temp. baja: '+fN(lmm.prom,1)+'°F',accMonReg);
+      if(lmm.prom>c.tmax) push('danger','Temp. alta: '+fN(lmm.prom,1)+'°F',accMonReg);
     }
     if(lmm&&lmm.hum){
-      if(lmm.hum<c.hmin) push('warn','Humedad baja: '+lmm.hum+'/5');
-      if(lmm.hum>c.hmax) push('warn','Humedad alta: '+lmm.hum+'/5');
+      if(lmm.hum<c.hmin) push('warn','Humedad baja: '+lmm.hum+'/5',accMonReg);
+      if(lmm.hum>c.hmax) push('warn','Humedad alta: '+lmm.hum+'/5',accMonReg);
     }
     var edad=dB(p.fecha,td()),ds=c.solv-edad;
-    if(ds<=c.saviso&&ds>=0) push('info','SOLVITA en '+ds+' días');
-    if(ds<0&&p.estado!=='Finalizada') push('warn',Math.abs(ds)+'d sobre plazo SOLVITA');
-    if(p.tmc==null) push('info','TM reducidas sin confirmar');
+    if(ds<=c.saviso&&ds>=0) push('info','SOLVITA en '+ds+' días',accSolv);
+    if(ds<0&&p.estado!=='Finalizada') push('warn',Math.abs(ds)+'d sobre plazo SOLVITA',accSolv);
+    if(p.tmc==null) push('info','TM reducidas sin confirmar — clic para confirmar cuánto TM quedó de esta pila',{sec:'pilas',abrir:function(){confRed(p.cod);}});
   });
   return al;
 }
@@ -1481,26 +1487,49 @@ function alsTM(){
   DB.acts.forEach(function(a){
     var d=labDestino(a.labor);
     if(d!=='traslado' && a.labor!=='Despacho') return;
+    var accion=null;
     // Pre despacho hacia una pila PD-...: se resuelve solo si ya se formalizó TM.
     if(a.labor==='Pre despacho'){
       var m=/a (PD-[\w-]+)/.exec(a.obs||'');
       if(m){
         var pd=DB.pilas.find(function(x){return x.cod===m[1];});
         if(pd && tmEn(pd.cod)>0) return;
+        if(pd) accion={sec:'pilas',abrir:function(){abrirFormalizarPD(pd.cod);}};
       }
+    } else if(a.labor==='Traslado de pila' || a.labor==='Almacenamiento'){
+      var m2=/De (\S+) a (\S+)/.exec(a.obs||'');
+      if(m2){ var oCod=m2[1],dCod=m2[2]; accion={sec:'pilas',abrir:function(){abrirMovPrefill(oCod,dCod);}}; }
     }
     // Despacho: se resuelve solo si ya existe un despacho real para esa pila,
     // fechado el mismo día o después de las horas registradas.
     if(a.labor==='Despacho' && a.pila){
       var yaDespachado=DB.desps.some(function(x){return x.pila===a.pila && String(x.fecha).substring(0,10)>=String(a.fecha).substring(0,10);});
       if(yaDespachado) return;
+      var esMont=DB.monts.some(function(x){return x.id===a.pila;});
+      var pilaFija=a.pila;
+      accion=esMont
+        ? {sec:'monts',abrir:function(){openFormMont('despacho',pilaFija);}}
+        : {sec:'desps',abrir:function(){abrirDespPrefill(pilaFija);}};
     }
     var key=alKey(a.id,'tm-pendiente');
     if(leidas[key]) return;
     var detalle=(a.obs||'').replace(' — pendiente de formalizar TM en ADMIN.','');
-    al.push({tipo:'warn', pila:(a.pila||a.labor), msg:'TM pendiente de ingresar — '+a.labor+' del '+fmt(a.fecha)+(detalle?': '+detalle:''), key:key});
+    al.push({tipo:'warn', pila:(a.pila||a.labor), msg:'TM pendiente de ingresar — '+a.labor+' del '+fmt(a.fecha)+(detalle?': '+detalle:''), key:key, accion:accion});
   });
   return al;
+}
+// Navega a la sección donde se resuelve una alerta y, cuando aplica, filtra
+// la lista a la pila en cuestión o abre directo el formulario que hace
+// falta. Usado tanto por alertas de labores (als) como por TM pendiente
+// (alsTM) — cada alerta trae su propio "accion" ya armado.
+function irAAlerta(accion){
+  if(!accion) return;
+  nav(accion.sec);
+  if(accion.filtro && accion.valor){
+    var el=document.getElementById(accion.filtro);
+    if(el){ el.value=accion.valor; el.dispatchEvent(new Event('input')); }
+  }
+  if(accion.abrir) accion.abrir();
 }
 function marcarLeida(key){
   if(!DB.alertasLeidas) DB.alertasLeidas={};
@@ -1531,15 +1560,15 @@ function nav(sec){
   document.querySelectorAll('.sc').forEach(e=>e.classList.remove('on'));
   const ni=document.querySelector('.ni[onclick="nav(\''+sec+'\')"]');if(ni)ni.classList.add('on');
   const si=document.getElementById('sc-'+sec);if(si)si.classList.add('on');
-  const T={dash:'Dashboard',alert:'Alertas','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',eficiencia:'Eficiencia de máquina',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',reportes:'Reportería',cfg:'Configuración'};
-  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',eficiencia:'Tiempo efectivo de volteo vs. traslado entre pilas, por día y máquina',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',reportes:'Reportes de gestión por período',cfg:'Costos y parámetros'};
+  const T={dash:'Dashboard',alert:'Alertas',tmpend:'TM pendiente','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',eficiencia:'Eficiencia de máquina',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',reportes:'Reportería',cfg:'Configuración'};
+  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención',tmpend:'Labores con horas cargadas a las que aún falta ingresarles el TM real','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',eficiencia:'Tiempo efectivo de volteo vs. traslado entre pilas, por día y máquina',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',reportes:'Reportes de gestión por período',cfg:'Costos y parámetros'};
   document.getElementById('ptit').textContent=T[sec]||sec;
   document.getElementById('psub').textContent=S[sec]||'';
   const hf=['pilas','acts','mon','movs','desps'].includes(sec);
   document.getElementById('bnew').style.display=hf?'':'none';
   const L={pilas:'Nueva pila',acts:'Nueva actividad',mon:'Nuevo monitoreo',movs:'Nuevo traslado',desps:'Nuevo despacho'};
   document.getElementById('blbl').textContent=L[sec]||'Nuevo';
-  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='orden-campo')rOrdenCampo();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();if(sec==='eficiencia')rEficiencia();if(sec==='reportes')rReportes();
+  if(sec==='cfg')rCfg();if(sec==='ejecucion')rEjecucion();if(sec==='planif-lab')rPlanifLab();if(sec==='planif-mon')rPlanifMon();if(sec==='orden-campo')rOrdenCampo();if(sec==='solvita')rSolvita();if(sec==='monts')rMonts();if(sec==='eficiencia')rEficiencia();if(sec==='reportes')rReportes();if(sec==='tmpend')rTMPend();
   mpo=null;render();
 }
 
@@ -1547,6 +1576,7 @@ function render(){
   var fns=[
     function(){rDash();},
     function(){rAl();},
+    function(){rTMPend();},
     function(){rPilas();},
     function(){rActs();},
     function(){rMons();},
@@ -1560,7 +1590,10 @@ function render(){
     catch(e){ console.error('[render] '+e.message, e.stack||''); }
   });
 }
-function updB(){const n=als().length+alsTM().length;const b=document.getElementById('nbg');if(n){b.style.display='';b.textContent=n;}else b.style.display='none';}
+function updB(){
+  const n=als().length;const b=document.getElementById('nbg');if(n){b.style.display='';b.textContent=n;}else b.style.display='none';
+  const nt=alsTM().length;const bt=document.getElementById('nbgtm');if(bt){if(nt){bt.style.display='';bt.textContent=nt;}else bt.style.display='none';}
+}
 
 // Helpers de semana (lunes a domingo de la semana actual)
 function inicioSemana(){
@@ -1808,8 +1841,16 @@ function rDash(){
   }).join('');
 }
 
+// Guarda el "accion" de cada alerta mostrada (por key) para que el clic en
+// la fila pueda encontrarlo — no se puede meter una función dentro de un
+// onclick="" armado como texto.
+var alAccionesCache={};
+function irAAlertaPorKey(key){ irAAlerta(alAccionesCache[key]); }
+
 // Dibuja una sección de alertas independiente (con su propio "marcar todas
-// leídas", que solo afecta esa lista — nunca la otra sección).
+// leídas", que solo afecta esa lista — nunca la otra sección). Si la alerta
+// trae "accion", la fila es clicable y lleva directo al módulo para
+// resolverla (el botón "Leída" es un hermano aparte, no dispara el clic).
 function seccionAlertas(titulo,icono,lista,fnMarcarTodas){
   var tp={danger:{c:'ap-d',i:'ti-alert-circle'},warn:{c:'ap-w',i:'ti-alert-triangle'},info:{c:'ap-i',i:'ti-info-circle'}};
   var header='<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px;flex-wrap:wrap;gap:6px">'
@@ -1818,10 +1859,13 @@ function seccionAlertas(titulo,icono,lista,fnMarcarTodas){
     +'</div>';
   if(!lista.length) return header+'<div class="ap ap-ok"><i class="ti ti-circle-check"></i><div>Sin alertas activas.</div></div>';
   return header+lista.map(function(a){
+    alAccionesCache[a.key]=a.accion;
+    var clicable=!!a.accion;
     return '<div class="ap '+tp[a.tipo].c+'" style="justify-content:space-between">'
-      +'<div style="display:flex;align-items:flex-start;gap:8px;flex:1">'
+      +'<div style="display:flex;align-items:flex-start;gap:8px;flex:1'+(clicable?';cursor:pointer':'')+'"'
+        +(clicable?' onclick="irAAlertaPorKey('+q(a.key)+')" title="Clic para ir a resolverlo"':'')+'>'
         +'<i class="ti '+tp[a.tipo].i+'" style="flex-shrink:0;margin-top:1px"></i>'
-        +'<div><strong>'+a.pila+'</strong> — '+a.msg+'</div>'
+        +'<div><strong>'+a.pila+'</strong> — '+a.msg+(clicable?' <span style="color:var(--ms2);font-weight:600">→</span>':'')+'</div>'
       +'</div>'
       +'<button class="btn sm" onclick="marcarLeida('+q(a.key)+')" title="Marcar como leída" style="flex-shrink:0;margin-left:10px;font-size:10px;padding:2px 8px">'
         +'<i class="ti ti-check"></i> Leída'
@@ -1829,14 +1873,23 @@ function seccionAlertas(titulo,icono,lista,fnMarcarTodas){
     +'</div>';
   }).join('');
 }
+// "Alertas" = solo labores de pila (volteo/monitoreo/temp/SOLVITA/TM sin
+// confirmar). "TM pendiente" vive en su propio índice del menú — ver
+// rTMPend() — a propósito, para no mezclar ambos temas en una sola lista.
 function rAl(){
-  var al=als(),alTM=alsTM(),w=document.getElementById('al-wrap');
+  var al=als(),w=document.getElementById('al-wrap');
   var leidas=Object.keys(DB.alertasLeidas||{}).length;
   var topHeader='<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px">'
     +(leidas?'<button class="btn sm" onclick="limpiarLeidas()" style="color:var(--ink4)"><i class="ti ti-refresh"></i> Restaurar leídas ('+leidas+')</button>':'')
     +'</div>';
-  w.innerHTML=topHeader
-    +seccionAlertas('Alertas de labores','ti-alert-triangle',al,'marcarTodasLeidasLabores')
+  w.innerHTML=topHeader+seccionAlertas('Alertas de labores','ti-alert-triangle',al,'marcarTodasLeidasLabores');
+}
+function rTMPend(){
+  var alTM=alsTM(),w=document.getElementById('tmpend-wrap');
+  if(!w) return;
+  w.innerHTML='<div class="ap ap-i" style="margin-bottom:4px"><i class="ti ti-info-circle"></i><div>'
+    +'Labores del Cargador Frontal (traslados, predespacho, despacho) donde el operario ya cargó horas pero todavía falta ingresar el TM real (peso de báscula o estimado). '
+    +'Clic en cualquiera para ir directo a completarlo.</div></div>'
     +seccionAlertas('TM pendiente de ingresar','ti-scale',alTM,'marcarTodasLeidasTM');
 }
 
@@ -2340,7 +2393,7 @@ function fMov(o){
   o=o||{};
   // Destinos: pilas existentes + montículos
   var montOpts=DB.monts.map(function(m){
-    return'<option value="'+m.id+'">'+m.n+' — bodega ('+fN(montTmD(m.id),1)+' TM)</option>';
+    return'<option value="'+m.id+'" '+(o.dc===m.id?'selected':'')+'>'+m.n+' — bodega ('+fN(montTmD(m.id),1)+' TM)</option>';
   }).join('');
   var pilaDestOpts=DB.pilas.map(function(p){
     return'<option value="'+p.cod+'" '+(o.dc===p.cod?'selected':'')+'>'+p.cod+' — '+p.estado+'</option>';
@@ -2349,7 +2402,7 @@ function fMov(o){
     +'<optgroup label="Montículos">'+montOpts+'</optgroup>';
   // Orígenes: solo pilas con saldo (excluye montículos como origen aquí — usar módulo montículos para eso)
   var otras=DB.pilas.filter(function(p){return o.dc?p.cod!==o.dc:true;})
-    .map(function(p){return'<option value="'+p.cod+'">'+p.cod+' — '+fN(tmD(p),2)+' TM disp.</option>';}).join('');
+    .map(function(p){return'<option value="'+p.cod+'" '+(o.oc===p.cod?'selected':'')+'>'+p.cod+' — '+fN(tmD(p),2)+' TM disp.</option>';}).join('');
   var eqOpts='<option value="">— sin equipo —</option>'
     +DB.eqs.map(function(e){return'<option value="'+e.id+'" '+(e.n==='Cargador Frontal'?'selected':'')+'>'+e.n+'</option>';}).join('');
   return'<div class="fg2">'
@@ -2397,6 +2450,15 @@ function openMov(cod){
   document.getElementById('mtit').textContent='Nuevo traslado — destino '+cod;
   document.getElementById('mbody').innerHTML=fMov({dc:cod});
   document.getElementById('mover').classList.add('op');
+}
+// Abre "Nuevo traslado" con origen Y destino prellenados — para cerrar el
+// ciclo de un traslado que un operario ya registró con horas (ver alsTM()).
+function abrirMovPrefill(oc,dc){
+  cur='movs';
+  document.getElementById('mtit').textContent='Nuevo traslado — '+oc+' → '+dc;
+  document.getElementById('mbody').innerHTML=fMov({oc:oc,dc:dc});
+  document.getElementById('mover').classList.add('op');
+  pvMv();
 }
 function openMovToMont(mid){
   var mn=DB.monts.find(function(m){return m.id===mid;})||{n:mid};
@@ -2452,14 +2514,28 @@ function gMov(){
   }
 }
 
+function abrirDespPrefill(cod){
+  cur='desps';
+  document.getElementById('mtit').textContent='Nuevo despacho — '+cod;
+  document.getElementById('mbody').innerHTML=fDesp({pc:cod});
+  document.getElementById('mover').classList.add('op');
+  pvDs();
+}
 function fDesp(o){
   o=o||{};
   // Solo pilas con SOLVITA Aprobado o Finalizada pueden despacharse
   var aptas=DB.pilas.filter(function(p){
     return (p.estado==='SOLVITA Aprobado'||p.estado==='Finalizada') && tmD(p)>0.01;
   });
+  // Si viene de una alerta de "despacho pendiente" (labor Despacho ya con
+  // horas) y esa pila no está en la lista de aptas (ej. no tiene SOLVITA
+  // Aprobado todavía), se agrega igual — ya hubo despacho físico real.
+  if(o.pc && !aptas.some(function(p){return p.cod===o.pc;})){
+    var pForzada=DB.pilas.find(function(p){return p.cod===o.pc;});
+    if(pForzada) aptas=[pForzada].concat(aptas);
+  }
   var pilasOpts=aptas.length
-    ? aptas.map(function(p){return'<option value="'+p.cod+'">'+p.cod+' — '+p.estado+'</option>';}).join('')
+    ? aptas.map(function(p){return'<option value="'+p.cod+'" '+(o.pc===p.cod?'selected':'')+'>'+p.cod+' — '+p.estado+'</option>';}).join('')
     : '<option value="">Sin pilas aptas para despacho</option>';
   return'<div class="ap ap-i" style="margin-bottom:10px"><i class="ti ti-info-circle"></i>'
     +'Solo pilas con <strong>SOLVITA Aprobado</strong> (o Finalizada) y con saldo disponible pueden despacharse.</div>'
