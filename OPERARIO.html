@@ -211,7 +211,27 @@ const GS_URL   = 'https://script.google.com/macros/s/AKfycbwb12Ibn7_-_vlsHXzxrCn
 const GS_TOKEN = 'compostera2026';
 
 // Estado en memoria
-let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{}, eqs:[], sectores:[] };
+let DATOS = { pilas:[], acts:[], mons:[], movs:[], tareas:[], turnos:[], operarios:[], planes:{}, eqs:[], sectores:[], monts:[] };
+
+// Control de labores del Cargador Frontal (sesión 2026-09-18). "destino" dice
+// a dónde va el costo: 'pila' (la pila elegida), 'traslado' (no genera costo
+// hasta que el admin formaliza el traslado con TM en ADMIN.html — aquí solo
+// queda la nota de origen/destino y las horas), 'despacho' o 'general'
+// (categorías propias, no ligadas a ninguna pila). "dir" solo aplica a los
+// traslados: p2p=pila→pila, p2m=pila→montículo, m2p=montículo→pila.
+const CC_LABORES = [
+  {n:'Formación de pila', destino:'pila'},
+  {n:'Apilado', destino:'pila'},
+  {n:'Manejo', destino:'pila'},
+  {n:'Traslado de pila', destino:'traslado', dir:'p2p'},
+  {n:'Almacenamiento', destino:'traslado', dir:'p2m'},
+  {n:'Pre despacho', destino:'traslado', dir:'m2p'},
+  {n:'Despacho', destino:'despacho'},
+  {n:'Traslado de máquina', destino:'general'},
+  {n:'Manejo de trash', destino:'general'},
+  {n:'Limpieza de áreas', destino:'general'},
+  {n:'Tareas varias', destino:'general'}
+];
 let OP = null;            // operario logueado
 let TURNO = null;         // turno abierto del día (si existe)
 let pilaActiva = null;    // pila seleccionada para registrar
@@ -242,6 +262,11 @@ function gsCargar(){
       DATOS.operarios = res.operarios||[];
       DATOS.planes = (res.catalogos&&res.catalogos.planes)||{};
       DATOS.sectores = (res.catalogos&&res.catalogos.sectores)||[];
+      // Los montículos no se sincronizan a la nube (igual que en ADMIN.html);
+      // se usa el mismo default fijo m1/m2/m3 si la nube no manda nada.
+      DATOS.monts = (res.catalogos&&res.catalogos.monts&&res.catalogos.monts.length) ? res.catalogos.monts : [
+        {id:'m1',n:'Montículo 1'}, {id:'m2',n:'Montículo 2'}, {id:'m3',n:'Montículo 3'}
+      ];
       return true;
     });
 }
@@ -359,6 +384,14 @@ function render(){
   });
 
   var html = TURNO ? barraTurno() : '';
+  if(!TURNO){
+    // Sin tareas de volteo no se fuerza a abrir turno, pero se ofrece por si
+    // el operario necesita registrar labores del Cargador Frontal (Formación,
+    // Apilado, traslados, etc.), que no dependen de tener tareas asignadas.
+    html += '<button class="btn-entrar" style="margin-bottom:14px" onclick="abrirTurnoModal()">🌅 Abrir turno</button>';
+  } else if(TURNO.equipo==='Cargador Frontal'){
+    html += '<button class="btn-entrar" style="margin-bottom:14px;background:var(--tierra)" onclick="abrirOtraActividad()">➕ Otra actividad</button>';
+  }
 
   if(pend.length){
     html+='<div class="seccion-tit">Tareas pendientes ('+pend.length+')</div>';
@@ -454,7 +487,7 @@ function abrirTurno(){
     if(res.ok){
       DATOS.turnos.push(t);
       TURNO = t;
-      render();
+      cerrarModal(); render();
       toast('✅ Turno abierto','ok');
     } else { toast('Error: '+(res.error||'no se guardó'),'err'); }
   }).catch(function(){ toast('Sin conexión','err'); });
@@ -542,7 +575,7 @@ function guardarVolteo(){
   var reg={
     id:uid(), pila:pilaActiva, fecha:hoy(), labor:labor,
     equipo:TURNO.equipo, eqId:'', horas:horas, ch:0, cost:0,
-    op:OP.nombre, obs:obs
+    op:OP.nombre, obs:obs, horoIni:hi, horoFin:hf
   };
   gsAgregar('acts',reg).then(function(res){
     if(!res.ok){ toast('Error: '+(res.error||'no se guardó'),'err'); bloquear(false); return; }
@@ -653,6 +686,131 @@ function guardarTraslado(){
   gsAgregar('movs',reg).then(function(res){
     if(res.ok){ DATOS.movs.push(reg); cerrarModal(); render(); toast('✅ Traslado registrado','ok'); }
     else { toast('Error: '+(res.error||'no se guardó'),'err'); bloquear(false); }
+  }).catch(function(){ toast('Sin conexión. Intenta de nuevo','err'); bloquear(false); });
+}
+
+// ── ABRIR TURNO desde modal (voluntario, sin tareas de volteo) ──
+function abrirTurnoModal(){
+  abrirModal(
+    '<h3>🌅 Abrir turno</h3><div class="sub">Equipo y horómetro inicial del día</div>'+
+    '<div class="campo"><label>Equipo del día</label><select id="t-equipo">'+equiposOpts('Cargador Frontal')+'</select></div>'+
+    '<div class="campo"><label>Horómetro inicial</label><input type="number" id="t-hi" step="0.1" inputmode="decimal" placeholder="Ej: 1245.5"></div>'+
+    botonesModal('abrirTurno()')
+  );
+}
+
+// ── OTRA ACTIVIDAD (control de labores del Cargador Frontal) ──
+// Pilas "del día": las de las tareas (pendientes o ya hechas) asignadas hoy a
+// este operario. Es la misma restricción que se usa para volteo/monitoreo —
+// no hay buscador de todas las pilas activas.
+function pilasDelDia(){
+  var cods={};
+  (DATOS.tareas||[]).filter(function(t){return t.opId===OP.id && t.fecha===hoy();})
+    .forEach(function(t){ if(t.pila) cods[t.pila]=true; });
+  return Object.keys(cods);
+}
+function pilasDelDiaOpts(){
+  var c=pilasDelDia();
+  return c.length ? c.map(function(x){return '<option value="'+x+'">'+x+'</option>';}).join('')
+    : '<option value="">(sin pilas asignadas hoy)</option>';
+}
+function monticulosOpts(){
+  var m=DATOS.monts||[];
+  return m.length ? m.map(function(x){return '<option value="'+x.id+'">'+x.n+'</option>';}).join('')
+    : '<option value="">(sin montículos)</option>';
+}
+function labCCActual(){
+  var n=document.getElementById('oa-labor').value;
+  return CC_LABORES.find(function(l){return l.n===n;});
+}
+function abrirOtraActividad(){
+  var opts=CC_LABORES.map(function(l){return '<option value="'+l.n+'">'+l.n+'</option>';}).join('');
+  abrirModal(
+    '<h3>➕ Otra actividad</h3><div class="sub">Cargador Frontal</div>'+
+    '<div class="campo"><label>Labor</label><select id="oa-labor" onchange="renderTargetOA()">'+opts+'</select></div>'+
+    '<div id="oa-target"></div>'+
+    '<div class="trio">'+
+      '<div class="campo"><label>Horómetro inicial</label><input type="number" id="oa-hi" step="0.1" inputmode="decimal" oninput="calcHorasOA()" placeholder="Ej: '+(TURNO?TURNO.horoIni:'')+'"></div>'+
+      '<div class="campo"><label>Horómetro final</label><input type="number" id="oa-hf" step="0.1" inputmode="decimal" oninput="calcHorasOA()" placeholder="Mayor que el inicial"></div>'+
+      '<div class="campo"><label>Horas</label><input type="text" id="oa-horas-calc" disabled value="—" style="text-align:center;font-weight:700"></div>'+
+    '</div>'+
+    '<div class="campo"><label>Observaciones (opcional)</label><textarea id="oa-obs" rows="2" placeholder="Algo que reportar…"></textarea></div>'+
+    botonesModal('guardarOtraActividad()')
+  );
+  renderTargetOA();
+}
+function renderTargetOA(){
+  var lab=labCCActual(); var el=document.getElementById('oa-target');
+  if(!lab||!el) return;
+  if(lab.destino==='pila'){
+    el.innerHTML='<div class="campo"><label>Pila</label><select id="oa-pila">'+pilasDelDiaOpts()+'</select></div>';
+  } else if(lab.destino==='traslado'){
+    if(lab.dir==='p2p'){
+      el.innerHTML='<div class="campo"><label>Pila origen</label><select id="oa-origen">'+pilasDelDiaOpts()+'</select></div>'+
+        '<div class="campo"><label>Pila destino</label><select id="oa-destino">'+pilasDelDiaOpts()+'</select></div>';
+    } else if(lab.dir==='p2m'){
+      el.innerHTML='<div class="campo"><label>Pila origen</label><select id="oa-origen">'+pilasDelDiaOpts()+'</select></div>'+
+        '<div class="campo"><label>Montículo destino</label><select id="oa-destino">'+monticulosOpts()+'</select></div>';
+    } else {
+      el.innerHTML='<div class="campo"><label>Montículo origen</label><select id="oa-origen">'+monticulosOpts()+'</select></div>'+
+        '<div class="campo"><label>Pila destino</label><select id="oa-destino">'+pilasDelDiaOpts()+'</select></div>';
+    }
+    el.innerHTML+='<div style="background:#fff8e1;border-radius:8px;padding:10px;font-size:12px;color:#7a5a10;margin-top:2px">⚠️ Esto NO mueve TM todavía — solo queda la nota para que el admin formalice el traslado en ADMIN.html.</div>';
+  } else if(lab.destino==='despacho'){
+    el.innerHTML='<div class="campo"><label>¿De dónde salió?</label>'+
+      '<select id="oa-origen-tipo" onchange="renderOrigenDespacho()"><option value="pila">Pila</option><option value="monticulo">Montículo</option></select></div>'+
+      '<div id="oa-origen-wrap"></div>';
+    renderOrigenDespacho();
+  } else {
+    el.innerHTML='<div style="background:var(--verde-cl);border-radius:10px;padding:10px;font-size:13px;color:var(--verde)">Costo general de la compostera — no se liga a ninguna pila.</div>';
+  }
+}
+function renderOrigenDespacho(){
+  var tipo=document.getElementById('oa-origen-tipo').value;
+  var el=document.getElementById('oa-origen-wrap');
+  if(!el) return;
+  el.innerHTML='<div class="campo"><label>'+(tipo==='pila'?'Pila':'Montículo')+' de origen</label><select id="oa-origen">'+(tipo==='pila'?pilasDelDiaOpts():monticulosOpts())+'</select></div>';
+}
+function calcHorasOA(){
+  var hi=parseFloat(document.getElementById('oa-hi').value);
+  var hf=parseFloat(document.getElementById('oa-hf').value);
+  var box=document.getElementById('oa-horas-calc');
+  if(!isNaN(hi)&&!isNaN(hf)&&hf>hi){ box.value=(hf-hi).toFixed(2)+' h'; }
+  else { box.value='—'; }
+}
+function guardarOtraActividad(){
+  var lab=labCCActual();
+  var hi=parseFloat(document.getElementById('oa-hi').value);
+  var hf=parseFloat(document.getElementById('oa-hf').value);
+  var obs=document.getElementById('oa-obs').value||'';
+  if(isNaN(hi)||isNaN(hf)){ toast('Indica horómetro inicial y final','err'); return; }
+  if(hf<=hi){ toast('El horómetro final debe ser mayor al inicial','err'); return; }
+  var horas=hf-hi, pila='', obsFinal=obs;
+  if(lab.destino==='pila'){
+    pila=document.getElementById('oa-pila').value;
+    if(!pila){ toast('Elige la pila','err'); return; }
+  } else if(lab.destino==='traslado'){
+    var origen=document.getElementById('oa-origen').value;
+    var destino=document.getElementById('oa-destino').value;
+    if(!origen||!destino){ toast('Elige origen y destino','err'); return; }
+    if(origen===destino){ toast('Origen y destino no pueden ser iguales','err'); return; }
+    obsFinal='De '+origen+' a '+destino+(obs?(' · '+obs):'')+' — pendiente de formalizar TM en ADMIN.';
+  } else if(lab.destino==='despacho'){
+    var origenD=document.getElementById('oa-origen').value;
+    if(!origenD){ toast('Elige el origen','err'); return; }
+    obsFinal='Origen: '+origenD+(obs?(' · '+obs):'');
+  }
+  bloquear(true);
+  var reg={
+    id:uid(), pila:pila, fecha:hoy(), labor:lab.n,
+    equipo:TURNO.equipo, eqId:'', horas:horas, ch:0, cost:0,
+    op:OP.nombre, obs:obsFinal, horoIni:hi, horoFin:hf
+  };
+  gsAgregar('acts',reg).then(function(res){
+    if(res.ok){
+      DATOS.acts.push(reg);
+      cerrarModal(); render(); toast('✅ Actividad registrada','ok');
+    } else { toast('Error: '+(res.error||'no se guardó'),'err'); bloquear(false); }
   }).catch(function(){ toast('Sin conexión. Intenta de nuevo','err'); bloquear(false); });
 }
 
