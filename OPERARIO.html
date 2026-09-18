@@ -699,7 +699,7 @@ function guardarTraslado(){
 function abrirTurnoModal(){
   abrirModal(
     '<h3>🌅 Abrir turno</h3><div class="sub">Equipo y horómetro inicial del día</div>'+
-    '<div class="campo"><label>Equipo del día</label><select id="t-equipo">'+equiposOpts('Cargador Frontal')+'</select></div>'+
+    '<div class="campo"><label>Equipo del día</label><select id="t-equipo">'+equiposOpts()+'</select></div>'+
     '<div class="campo"><label>Horómetro inicial</label><input type="number" id="t-hi" step="0.1" inputmode="decimal" placeholder="Ej: 1245.5"></div>'+
     botonesModal('abrirTurno()')
   );
@@ -826,7 +826,7 @@ function equiposOpts(sel){
   // cae a una lista mínima para no romper.
   var lista = (DATOS.eqs && DATOS.eqs.length)
     ? DATOS.eqs.map(function(e){return e.n;})
-    : ['Cargador Frontal','Tractor + implemento','Retroexcavadora','Manual'];
+    : ['Cargador 9','Cargador 3','Tractor + implemento','Retroexcavadora','Manual'];
   if(sel && lista.indexOf(sel)<0) lista.unshift(sel);
   return lista.map(function(e){return '<option value="'+e+'"'+(sel===e?' selected':'')+'>'+e+'</option>';}).join('');
 }
