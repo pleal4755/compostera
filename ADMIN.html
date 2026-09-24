@@ -1132,7 +1132,12 @@ const DEQ=[{id:'e1',n:'Cargador Frontal',c:45,h:[{f:'2026-01-01',c:45}]},{id:'e2
   // su propio horómetro — "Cargador Frontal" se deja intacta para no romper el
   // enlace por nombre de los 153 registros históricos de "Formación de pila".
   {id:'e1cf9',n:'Cargador 9',c:45,h:[{f:'2026-09-18',c:45}]},
-  {id:'e1cf3',n:'Cargador 3',c:45,h:[{f:'2026-09-18',c:45}]}
+  {id:'e1cf3',n:'Cargador 3',c:45,h:[{f:'2026-09-18',c:45}]},
+  // Antes solo se garantizaban al vuelo en un bloque de carga que ya se quitó
+  // (ver nota 2026-09-24) — se agregan aquí para que un catálogo nuevo
+  // (nube vacía) también las traiga.
+  {id:'ebk1',n:'Backhus 1',c:0,h:[{f:'2025-01-01',c:0}]},
+  {id:'ebk2',n:'Backhus 2',c:0,h:[{f:'2025-01-01',c:0}]}
 ];
 const DLAB=[{id:'l1',n:'Formación de pila',cat:'Formación',destino:'pila'},{id:'l2',n:'Volteo',cat:'Volteo'},{id:'l3',n:'Riego + Volteo',cat:'Volteo'},{id:'l4',n:'Riego',cat:'Riego'},{id:'l5',n:'Traslado',cat:'Movimiento'},{id:'l6',n:'Inspección general',cat:'Monitoreo'},{id:'l7',n:'Monitoreo temperatura',cat:'Monitoreo'},{id:'l8',n:'Despacho parcial',cat:'Despacho'},{id:'l9',n:'Despacho total',cat:'Despacho'},{id:'l10',n:'Análisis SOLVITA',cat:'Control de calidad'},
   // Control de labores del Cargador Frontal (sesión 2026-09-18, ajustado
@@ -1206,6 +1211,12 @@ function ld(){
 }
 function sv(){try{localStorage.setItem(SK,JSON.stringify(DB));}catch{}}
 let DB=ld(),cur='dash',eid=null,pf=new Date().toISOString().split('T')[0],fi='venc',plan={},mpo=null;
+// Arranca en blanco (no con el caché de pilas/acts/etc. de la sesión
+// anterior) hasta que gsCargarTodo() traiga los datos frescos de la nube —
+// evita mostrar por unos segundos datos viejos que ya podrían no ser
+// ciertos (ej. una pila que ya se despachó). cfg/eqs/labs/planes/monts SÍ
+// se conservan del caché (ld() ya los fusiona/mantiene correctamente).
+DB.pilas=[]; DB.acts=[]; DB.mons=[]; DB.movs=[]; DB.desps=[];
 
 const td=()=>new Date().toISOString().split('T')[0];
 const fmt=d=>{
@@ -3642,77 +3653,17 @@ function exportCSV(){
 function toast(msg,t){var w=document.getElementById('tw2');var el=document.createElement('div');el.className='toast'+(t?' '+t:'');el.textContent=msg;w.appendChild(el);setTimeout(function(){el.classList.add('sh');},10);setTimeout(function(){el.classList.remove('sh');setTimeout(function(){el.remove();},300);},2800);}
 
 
-// ── CARGA INICIAL — siempre sobrescribe pilas/acts/mons/movs/desps
-// Preserva: cfg, eqs, labs, planes existentes en localStorage
-(function() {
-
-  // 1. Leer configuración y datos del usuario
-  var savedCfg=null,savedEqs=null,savedLabs=null,savedPlanes=null;
-  var savedMonts=null,savedCamiones=null,savedAlertas=null;
-  try {
-    var prev=localStorage.getItem('comp_v5g');
-    if(prev){
-      var pd=JSON.parse(prev);
-      if(pd.cfg) savedCfg=pd.cfg;
-      if(pd.eqs&&pd.eqs.length) savedEqs=pd.eqs;
-      if(pd.labs&&pd.labs.length) savedLabs=pd.labs;
-      if(pd.planes) savedPlanes=pd.planes;
-      if(pd.monts&&pd.monts.length) savedMonts=pd.monts;
-      if(pd.camiones) savedCamiones=pd.camiones;
-      if(pd.alertasLeidas) savedAlertas=pd.alertasLeidas;
-    }
-  } catch(e) {}
-
-  // 2. Restaurar
-  if(savedCfg)    DB.cfg=savedCfg;
-  if(savedEqs)    DB.eqs=savedEqs;
-  if(savedLabs)   DB.labs=savedLabs;
-  if(savedPlanes) DB.planes=savedPlanes;
-  if(savedMonts)  DB.monts=savedMonts;
-  if(savedCamiones) DB.camiones=savedCamiones;
-  if(savedAlertas)  DB.alertasLeidas=savedAlertas;
-
-  // 3. Cargar datos frescos
-  DB.pilas = [];
-  DB.acts  = [];
-  DB.mons  = [];
-  DB.movs  = [];
-  DB.desps = [];
-  DB.cnt   = 110;
-
-  /// Garantizar Backhus 1 y 2 en DB.eqs antes de vincular
-  ['Backhus 1','Backhus 2'].forEach(function(nm,i){
-    if(!DB.eqs.find(function(e){return e.n===nm;})){
-      DB.eqs.push({id:'ebk'+(i+1),n:nm,c:0,h:[{f:'2025-01-01',c:0}]});
-    }
-  });
-
-  // 4. Vincular actividades a equipos por nombre y recalcular costos
-  DB.acts.forEach(function(act) {
-    if (!act.equipo) return;
-    var eq = DB.eqs.find(function(e) {
-      return e.n.toLowerCase().trim() === act.equipo.toLowerCase().trim();
-    });
-    if (eq) {
-      act.eqId = eq.id;
-      var hist = (eq.h || []).slice().sort(function(a,b){ return b.f.localeCompare(a.f); });
-      var reg  = hist.find(function(x){ return x.f <= act.fecha; });
-      var ch   = reg ? reg.c : (hist.length ? hist[hist.length-1].c : 0);
-      act.ch   = ch;
-      act.cost = Math.round(ch * act.horas * 100) / 100;
-    }
-  });
-
-  // 5. Guardar todo
-  sv();
-
-  // 6. Notificar
-  console.log('[Compostera] Carga inicial completada: ' +
-    DB.pilas.length + ' pilas, ' +
-    DB.acts.length  + ' actividades, ' +
-    DB.mons.length  + ' monitoreos.');
-})();
-// ──────────────────────────────────────────────────────────────
+// (Eliminado 2026-09-24: había un segundo mecanismo de "carga inicial" acá,
+// duplicado y en conflicto con ld() — leía el catálogo de labores directo de
+// localStorage['comp_v5g'] SIN la fusión de labores nuevas (ver ld() más
+// arriba), y lo volvía a pisar en cada carga. Por eso las labores del
+// Cargador Frontal (Apilado, Manejo, etc.) no aparecían: quedaban fusionadas
+// un instante por ld() y este bloque las volvía a sobrescribir con las 10
+// viejas, y encima las regrababa a localStorage con sv(), perpetuando el
+// problema. También traía un DB.cnt=110 fijo (residuo de una versión muy
+// temprana) que solo no se notaba porque gsCargarTodo() lo corregía después
+// con el valor real de la nube. ld() + gsCargarTodo() ya cubren todo lo que
+// hacía este bloque, de forma correcta.
 
 // ══════════════════════════════════════════════════════════════════
 // MÓDULO SOLVITA
