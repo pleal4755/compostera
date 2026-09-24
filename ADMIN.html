@@ -2000,8 +2000,19 @@ function chEst(c,e){const p=DB.pilas.find(x=>x.cod===c);if(p){p.estado=e;gsEdita
 // No toca "Finalizada" (estado manual, ya es terminal).
 function sincronizarEstadoDespachadas(){
   DB.pilas.forEach(function(p){
-    if(p.estado!=='Despachada' && p.estado!=='Finalizada' && tmD(p)<=0.01){
+    if(p.estado==='Finalizada') return;
+    // "Tuvo salida" = alguna vez se le sacó algo (despacho o traslado). Sin
+    // esto, una pila de predespacho recién creada (arranca en 0 TM a
+    // propósito, hasta que se formaliza el traslado del montículo) se
+    // marcaba Despachada de inmediato — quedaba invisible para cargarle
+    // actividades, aunque nunca se había despachado ni trasladado nada.
+    var tuvoSalida=tmDe(p.cod)>0||tmSa(p.cod)>0;
+    if(p.estado!=='Despachada' && tmD(p)<=0.01 && tuvoSalida){
       p.estado='Despachada';
+      gsEditar('pilas','cod',p.cod,clonReg(p));
+    } else if(p.estado==='Despachada' && !tuvoSalida){
+      // Se había marcado por error (este mismo caso) — revertir.
+      p.estado='Activa';
       gsEditar('pilas','cod',p.cod,clonReg(p));
     }
   });
