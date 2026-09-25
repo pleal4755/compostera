@@ -1452,6 +1452,11 @@ function pep(){return DB.pilas.filter(p=>ESTADOS.includes(p.estado));}
 // "Vigente" = todavía relevante para planificación diaria (volteos, monitoreo,
 // alertas, SOLVITA) — ni Finalizada ni Despachada (ya no tiene saldo).
 function pilaVigente(p){return p.estado!=='Finalizada' && p.estado!=='Despachada';}
+// Para planificar volteo/monitoreo: una pila normal necesita saldo confirmado
+// (tmD>0.01), pero una de predespacho puede tener material físico real
+// esperando turno aunque el admin todavía no formalice el TM con el
+// montículo — no debe quedar fuera de la planificación por eso.
+function planificable(p){ return tmD(p)>0.01 || esPredespacho(p); }
 
 function alKey(pila,msg){return pila+'||'+msg;}
 function als(){
@@ -2816,7 +2821,7 @@ function resetCfg(){
 }
 
 function rPlanes(){
-  var act=pep().filter(function(p){return p.estado!=='Finalizada' && tmD(p)>0.01;});
+  var act=pep().filter(function(p){return p.estado!=='Finalizada' && planificable(p);});
   var g=document.getElementById('plan-grid');
   if(!act.length){g.innerHTML='<div class="em" style="padding:14px"><i class="ti ti-stack-2"></i>Sin pilas activas.</div>';return;}
   g.innerHTML=act.map(function(p){
@@ -2971,7 +2976,7 @@ function cmpOrdenCampo(a,b){
 }
 function rOrdenCampo(){
   var tbody=document.getElementById('orden-tb');if(!tbody)return;
-  var act=pep().filter(function(p){return p.estado!=='Finalizada' && tmD(p)>0.01;});
+  var act=pep().filter(function(p){return p.estado!=='Finalizada' && planificable(p);});
   if(!act.length){
     tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink4);font-style:italic">Sin pilas activas.</td></tr>';
     return;
@@ -2998,7 +3003,7 @@ function rOrdenCampo(){
   }).join('');
 }
 function guardarOrdenCampo(){
-  var act=pep().filter(function(p){return p.estado!=='Finalizada' && tmD(p)>0.01;});
+  var act=pep().filter(function(p){return p.estado!=='Finalizada' && planificable(p);});
   var n=0;
   act.forEach(function(p){
     var el=document.getElementById('ord-'+p.cod);
@@ -3039,7 +3044,7 @@ function kcardDiv(cod,inPlan,fn){var cls="kcard"+(inPlan?" kin-plan":"");return 
 function rKanban(){
   var qs=(document.getElementById('srch-kanban')?document.getElementById('srch-kanban').value:'').toLowerCase();
   var f=pf;
-  var act=pep().filter(function(p){return p.estado!=='Finalizada' && tmD(p)>0.01 && !tienePendiente(p.cod,'volteo');});
+  var act=pep().filter(function(p){return p.estado!=='Finalizada' && planificable(p) && !tienePendiente(p.cod,'volteo');});
   if(qs) act=act.filter(function(p){return p.cod.toLowerCase().indexOf(qs)>=0;});
 
   // Pilas >90d: no se clasifican por frecuencia, van a columna "Por criterio"
@@ -3231,7 +3236,7 @@ function toggleDailyRow(cod,checked){
 
 function addPilasAlPlan(){
   // Abre mini-modal para seleccionar pilas por filtro
-  var act=pep().filter(function(p){return p.estado!=='Finalizada' && tmD(p)>0.01;});
+  var act=pep().filter(function(p){return p.estado!=='Finalizada' && planificable(p);});
   var f=pf;
   var venc=act.filter(function(p){return urgV(p,f)==='venc';});
   var hoy=act.filter(function(p){return urgV(p,f)==='hoy';});
@@ -3354,7 +3359,7 @@ function rPlanifMon(){
 function rKanbanMon(){
   var qs=(document.getElementById('srch-mon')?document.getElementById('srch-mon').value:'').toLowerCase();
   var f=pfMon;
-  var act=pep().filter(function(p){return p.estado!=='Finalizada' && tmD(p)>0.01 && !tienePendiente(p.cod,'monitoreo');});
+  var act=pep().filter(function(p){return p.estado!=='Finalizada' && planificable(p) && !tienePendiente(p.cod,'monitoreo');});
   if(qs) act=act.filter(function(p){return p.cod.toLowerCase().indexOf(qs)>=0;});
 
   var grupos={venc:[],hoy:[],prox:[],bien:[]};
@@ -3446,7 +3451,7 @@ function rKanbanMonBar(){
 
 function sugerirKanbanMon(){
   var f=pfMon,cnt=0;
-  pep().filter(function(p){return p.estado!=='Finalizada' && tmD(p)>0.01;})
+  pep().filter(function(p){return p.estado!=='Finalizada' && planificable(p);})
     .filter(function(p){var u=urgM(p,f);return u==='venc'||u==='hoy';})
     .forEach(function(p){if(!kanbanMonPlan[p.cod]){kanbanMonPlan[p.cod]=true;cnt++;}});
   if(!cnt)toast('No hay pilas con monitoreo vencido o de hoy','wn');
