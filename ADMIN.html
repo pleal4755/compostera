@@ -1488,29 +1488,33 @@ function als(){
   var leidas=DB.alertasLeidas||{};
   pep().filter(pilaVigente).forEach(function(p){
     var pl=pp(p.cod);
-    var push=function(tipo,msg,accion){
+    var push=function(tipo,msg,accion,categoria){
       var key=alKey(p.cod,msg);
-      if(!leidas[key]) al.push({tipo:tipo,pila:p.cod,msg:msg,key:key,accion:accion});
+      if(!leidas[key]) al.push({tipo:tipo,pila:p.cod,msg:msg,key:key,accion:accion,categoria:categoria});
     };
     var accVolteo={sec:'planif-lab',filtro:'srch-kanban',valor:p.cod};
     var accMon={sec:'planif-mon',filtro:'srch-mon',valor:p.cod};
     var accMonReg={sec:'mon',filtro:'flt-mon-pila',valor:p.cod};
     var accSolv={sec:'solvita',filtro:'srch-solv',valor:p.cod};
-    if(pl.pv&&pl.pv<td()) push('danger','Volteo vencido hace '+dB(pl.pv,td())+'d ('+fmt(pl.pv)+')',accVolteo);
-    if(pl.pm&&pl.pm<td()) push('warn','Monitoreo vencido hace '+dB(pl.pm,td())+'d',accMon);
+    if(pl.pv&&pl.pv<td()) push('danger','Volteo vencido hace '+dB(pl.pv,td())+'d ('+fmt(pl.pv)+')',accVolteo,'volteo');
+    if(pl.pm&&pl.pm<td()) push('warn','Monitoreo vencido hace '+dB(pl.pm,td())+'d',accMon,'monitoreo');
     var lmm=lm(p.cod);
     if(lmm&&lmm.prom!=null){
-      if(lmm.prom<c.tmin) push('warn','Temp. baja: '+fN(lmm.prom,1)+'°F',accMonReg);
-      if(lmm.prom>c.tmax) push('danger','Temp. alta: '+fN(lmm.prom,1)+'°F',accMonReg);
+      if(lmm.prom<c.tmin) push('warn','Temp. baja: '+fN(lmm.prom,1)+'°F',accMonReg,'temperatura');
+      if(lmm.prom>c.tmax) push('danger','Temp. alta: '+fN(lmm.prom,1)+'°F',accMonReg,'temperatura');
     }
+    // Humedad: solo por debajo de hmin (sin incluir hmin) — ej. hmin=3 avisa
+    // con 1 o 2, no con 3. Ver ajuste 2026-09-29 (antes cfg.hmin traía un
+    // valor de otra escala y avisaba siempre).
     if(lmm&&lmm.hum){
-      if(lmm.hum<c.hmin) push('warn','Humedad baja: '+lmm.hum+'/5',accMonReg);
-      if(lmm.hum>c.hmax) push('warn','Humedad alta: '+lmm.hum+'/5',accMonReg);
+      if(lmm.hum<c.hmin) push('warn','Humedad baja: '+lmm.hum+'/5',accMonReg,'humedad');
+      if(lmm.hum>c.hmax) push('warn','Humedad alta: '+lmm.hum+'/5',accMonReg,'humedad');
     }
     var edad=dB(p.fecha,td()),ds=c.solv-edad;
-    if(ds<=c.saviso&&ds>=0) push('info','SOLVITA en '+ds+' días',accSolv);
-    if(ds<0&&p.estado!=='Finalizada') push('warn',Math.abs(ds)+'d sobre plazo SOLVITA',accSolv);
-    if(p.tmc==null) push('info','TM reducidas sin confirmar — clic para confirmar cuánto TM quedó de esta pila',{sec:'pilas',abrir:function(){confRed(p.cod);}});
+    if(ds<=c.saviso&&ds>=0) push('info','SOLVITA en '+ds+' días',accSolv,'solvita');
+    if(ds<0&&p.estado!=='Finalizada') push('warn',Math.abs(ds)+'d sobre plazo SOLVITA',accSolv,'solvita');
+    // (Quitada 2026-09-29: alerta de "TM reducidas sin confirmar" — el
+    // operador confirma cuando le haga falta; si no, se usa la teórica.)
   });
   return al;
 }
@@ -1578,7 +1582,10 @@ function marcarLeida(key){
 }
 function marcarTodasLeidasLabores(){
   if(!DB.alertasLeidas) DB.alertasLeidas={};
-  als().forEach(function(a){DB.alertasLeidas[a.key]=td();});
+  // Si hay filtro de categoría activo, "todas" respeta el filtro — no marca
+  // de leídas categorías que ni siquiera se están mostrando.
+  var hayFiltro=Object.keys(alFiltro).length>0;
+  als().filter(function(a){return !hayFiltro || alFiltro[a.categoria];}).forEach(function(a){DB.alertasLeidas[a.key]=td();});
   sv();updB();rAl();
 }
 function marcarTodasLeidasTM(){
@@ -1916,13 +1923,39 @@ function seccionAlertas(titulo,icono,lista,fnMarcarTodas){
 // "Alertas" = solo labores de pila (volteo/monitoreo/temp/SOLVITA/TM sin
 // confirmar). "TM pendiente" vive en su propio índice del menú — ver
 // rTMPend() — a propósito, para no mezclar ambos temas en una sola lista.
+// Filtro por tipo de alerta (vacío = mostrar todas). Se guarda solo en
+// memoria de la sesión, no en la nube.
+var alFiltro={};
+var AL_CATEGORIAS=[
+  {key:'volteo',label:'Volteo',icono:'ti-tractor'},
+  {key:'monitoreo',label:'Monitoreo',icono:'ti-calendar-check'},
+  {key:'temperatura',label:'Temperatura',icono:'ti-thermometer'},
+  {key:'humedad',label:'Humedad',icono:'ti-droplet'},
+  {key:'solvita',label:'SOLVITA',icono:'ti-flask'}
+];
+function alToggleFiltro(cat){
+  if(alFiltro[cat]) delete alFiltro[cat]; else alFiltro[cat]=true;
+  rAl();
+}
+function alLimpiarFiltro(){ alFiltro={}; rAl(); }
 function rAl(){
   var al=als(),w=document.getElementById('al-wrap');
   var leidas=Object.keys(DB.alertasLeidas||{}).length;
-  var topHeader='<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px">'
+  var hayFiltro=Object.keys(alFiltro).length>0;
+  var alFiltrada=hayFiltro?al.filter(function(a){return alFiltro[a.categoria];}):al;
+  var chips=AL_CATEGORIAS.map(function(cat){
+    var n=al.filter(function(a){return a.categoria===cat.key;}).length;
+    var activo=!!alFiltro[cat.key];
+    return '<button class="btn sm'+(activo?' pr':'')+'" onclick="alToggleFiltro('+q(cat.key)+')"><i class="ti '+cat.icono+'"></i> '+cat.label+' <span style="opacity:.7">('+n+')</span></button>';
+  }).join('');
+  var topHeader='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+      +'<span style="font-size:11px;color:var(--ink4);font-weight:600">Filtrar:</span>'+chips
+      +(hayFiltro?'<button class="btn sm" onclick="alLimpiarFiltro()" style="color:var(--ink4)"><i class="ti ti-x"></i> Quitar filtro</button>':'')
+    +'</div>'
     +(leidas?'<button class="btn sm" onclick="limpiarLeidas()" style="color:var(--ink4)"><i class="ti ti-refresh"></i> Restaurar leídas ('+leidas+')</button>':'')
     +'</div>';
-  w.innerHTML=topHeader+seccionAlertas('Alertas de labores','ti-alert-triangle',al,'marcarTodasLeidasLabores');
+  w.innerHTML=topHeader+seccionAlertas('Alertas de labores','ti-alert-triangle',alFiltrada,'marcarTodasLeidasLabores');
 }
 function rTMPend(){
   var alTM=alsTM(),w=document.getElementById('tmpend-wrap');
