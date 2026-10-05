@@ -658,7 +658,8 @@ td.hi{background:var(--ms6)}
       <div id="rep-pane-maquinaria" style="display:none">
         <div class="kr" id="rep-maq-kpis"></div>
         <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-gauge"></i> Horas por máquina <span id="rep-maq-sub" style="font-size:11px;color:var(--ink4);font-weight:normal;margin-left:6px"></span></div></div>
-          <div class="tw"><table><thead><tr><th>Máquina</th><th style="text-align:right">Días</th><th style="text-align:right">Pilas</th><th style="text-align:right"># Volteos</th><th style="text-align:right">H. volteo</th><th style="text-align:right">H. traslado</th><th style="text-align:right">H. total</th><th style="text-align:right">% traslado</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-maq-tb"></tbody></table></div>
+          <div class="tw"><table><thead><tr><th>Máquina</th><th style="text-align:right">Días</th><th style="text-align:right">Pilas</th><th style="text-align:right"># Volteos</th><th style="text-align:right">H. en labores</th><th style="text-align:right" title="Horas del horómetro del turno que no quedaron registradas en ninguna labor (movimientos entre pilas, esperas, etc.), repartidas proporcionalmente entre las labores del día">H. sin asignar</th><th style="text-align:right">H. total (horómetro)</th><th style="text-align:right">% sin asignar</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-maq-tb"></tbody></table></div>
+          <div style="font-size:10.5px;color:var(--ink4);padding:6px 12px 10px"><strong>H. en labores</strong> = suma de las horas registradas en cada labor (lo que ves en Actividades) · <strong style="color:var(--am)">H. sin asignar</strong> = tiempo del horómetro del turno que no se registró en ninguna labor, repartido entre las labores del día (por eso H. total puede ser mayor al detalle).</div>
         </div>
       </div>
 
@@ -4383,7 +4384,7 @@ function rRepMaquinaria(){
   if(k) k.innerHTML=
     '<div class="kpi ok"><div class="kl"><i class="ti ti-clock"></i> Horas-máquina</div><div class="kv">'+fN(totEf+totTras,1)+' <span class="ku">h</span></div></div>'
     +'<div class="kpi"><div class="kl"><i class="ti ti-tractor"></i> Máquinas activas</div><div class="kv">'+maqKeys.length+'</div></div>'
-    +'<div class="kpi '+(pctTras>30?'dn':pctTras>20?'wn':'ok')+'"><div class="kl"><i class="ti ti-percentage"></i> % en traslado</div><div class="kv">'+fN(pctTras,1)+'%</div></div>'
+    +'<div class="kpi '+(pctTras>30?'dn':pctTras>20?'wn':'ok')+'"><div class="kl"><i class="ti ti-percentage"></i> % sin asignar</div><div class="kv">'+fN(pctTras,1)+'%</div></div>'
     +'<div class="kpi"><div class="kl"><i class="ti ti-currency-dollar"></i> Costo total</div><div class="kv" style="font-size:15px">'+fM(totCosto)+'</div></div>';
   var sub=document.getElementById('rep-maq-sub');
   if(sub){
