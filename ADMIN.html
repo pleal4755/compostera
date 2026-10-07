@@ -367,7 +367,7 @@ td.hi{background:var(--ms6)}
     <div class="ns"><div class="nl">Principal</div>
       <div class="ni on" onclick="nav('dash')"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
       <div class="ni" onclick="nav('alert')"><i class="ti ti-bell"></i> Alertas <span class="nbg" id="nbg" style="display:none"></span></div>
-      <div class="ni" onclick="nav('tmpend')"><i class="ti ti-scale"></i> TM pendiente <span class="nbg" id="nbgtm" style="display:none"></span></div>
+      <div class="ni" onclick="nav('tmpend')"><i class="ti ti-scale"></i> Pendientes <span class="nbg" id="nbgtm" style="display:none"></span></div>
       <div class="ni" onclick="nav('planif-lab')"><i class="ti ti-tractor"></i> Plan. Labores</div>
       <div class="ni" onclick="nav('planif-mon')"><i class="ti ti-thermometer"></i> Plan. Monitoreo</div>
       <div class="ni" onclick="nav('orden-campo')"><i class="ti ti-route"></i> Orden de campo</div>
@@ -659,7 +659,7 @@ td.hi{background:var(--ms6)}
         <div class="kr" id="rep-maq-kpis"></div>
         <div class="card"><div class="ch"><div class="ct2"><i class="ti ti-gauge"></i> Horas por máquina <span id="rep-maq-sub" style="font-size:11px;color:var(--ink4);font-weight:normal;margin-left:6px"></span></div></div>
           <div class="tw"><table><thead><tr><th>Máquina</th><th style="text-align:right">Días</th><th style="text-align:right">Pilas</th><th style="text-align:right"># Volteos</th><th style="text-align:right">H. en labores</th><th style="text-align:right" title="Horas del horómetro del turno que no quedaron registradas en ninguna labor (movimientos entre pilas, esperas, etc.), repartidas proporcionalmente entre las labores del día">H. sin asignar</th><th style="text-align:right">H. total (horómetro)</th><th style="text-align:right">% sin asignar</th><th style="text-align:right">Costo</th></tr></thead><tbody id="rep-maq-tb"></tbody></table></div>
-          <div style="font-size:10.5px;color:var(--ink4);padding:6px 12px 10px"><strong>H. en labores</strong> = suma de las horas registradas en cada labor (lo que ves en Actividades) · <strong style="color:var(--am)">H. sin asignar</strong> = tiempo del horómetro del turno que no se registró en ninguna labor, repartido entre las labores del día (por eso H. total puede ser mayor al detalle).</div>
+          <div style="font-size:10.5px;color:var(--ink4);padding:6px 12px 10px"><strong>H. en labores</strong> = suma de las horas registradas en cada labor (lo que ves en Actividades) · <strong style="color:var(--am)">H. sin asignar</strong> = tiempo del horómetro del turno que no se registró en ninguna labor. En los cargadores se muestra aparte y se asigna desde <strong>Pendientes</strong> (con labor y descripción); en las demás máquinas se reparte entre las labores del día. Por eso H. total puede ser mayor al detalle de actividades.</div>
         </div>
       </div>
 
@@ -1615,8 +1615,8 @@ function nav(sec){
   document.querySelectorAll('.sc').forEach(e=>e.classList.remove('on'));
   const ni=document.querySelector('.ni[onclick="nav(\''+sec+'\')"]');if(ni)ni.classList.add('on');
   const si=document.getElementById('sc-'+sec);if(si)si.classList.add('on');
-  const T={dash:'Dashboard',alert:'Alertas',tmpend:'TM pendiente','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',eficiencia:'Eficiencia de máquina',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',reportes:'Reportería',cfg:'Configuración'};
-  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención',tmpend:'Labores con horas cargadas a las que aún falta ingresarles el TM real','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',eficiencia:'Tiempo efectivo de volteo vs. traslado entre pilas, por día y máquina',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',reportes:'Reportes de gestión por período',cfg:'Costos y parámetros'};
+  const T={dash:'Dashboard',alert:'Alertas',tmpend:'Pendientes','planif-lab':'Plan. Labores','planif-mon':'Plan. Monitoreo','orden-campo':'Orden de campo',solvita:'SOLVITA',monts:'Montículos',pilas:'Pilas',acts:'Actividades',eficiencia:'Eficiencia de máquina',mon:'Monitoreo',movs:'Movimientos',desps:'Despachos',planes:'Planes de campo',reportes:'Reportería',cfg:'Configuración'};
+  const S={dash:'Resumen operativo',alert:'Situaciones que requieren atención',tmpend:'TM por ingresar y horas de cargador por asignar a una labor','planif-lab':'Volteos, riegos y labores de campo','planif-mon':'Monitoreo de temperaturas','orden-campo':'Secuencia física del recorrido en campo — define el orden de los planes',solvita:'Pilas candidatas a análisis SOLVITA — >90d · >4 volteos · temp <130°F',monts:'Bodegas de producto terminado — saldos y costos',pilas:'TM, saldos, costos y movimientos por pila',acts:'Labores y maquinaria',eficiencia:'Tiempo efectivo de volteo vs. traslado entre pilas, por día y máquina',mon:'Temperaturas en °F',movs:'Traslados entre pilas',desps:'Salidas de producto',planes:'Próximas fechas por pila',reportes:'Reportes de gestión por período',cfg:'Costos y parámetros'};
   document.getElementById('ptit').textContent=T[sec]||sec;
   document.getElementById('psub').textContent=S[sec]||'';
   const hf=['pilas','acts','mon','movs','desps'].includes(sec);
@@ -1647,7 +1647,7 @@ function render(){
 }
 function updB(){
   const n=als().length;const b=document.getElementById('nbg');if(n){b.style.display='';b.textContent=n;}else b.style.display='none';
-  const nt=alsTM().length;const bt=document.getElementById('nbgtm');if(bt){if(nt){bt.style.display='';bt.textContent=nt;}else bt.style.display='none';}
+  const nt=alsTM().length+horasSinAsignar().length;const bt=document.getElementById('nbgtm');if(bt){if(nt){bt.style.display='';bt.textContent=nt;}else bt.style.display='none';}
 }
 
 // Helpers de semana (lunes a domingo de la semana actual)
@@ -1841,13 +1841,17 @@ function rDash(){
   // prorratean al $/TM de ninguna pila. "Despacho" ya no cae aquí — desde
   // el ajuste 2026-09-18b su costo se carga directo a la pila/montículo de
   // origen (destino:'origen'), igual que Apilado/Manejo.
-  var costoGeneral=costoActsDestino('general');
+  // + horas de cargador sin asignar: tiempo real de máquina, costo de la
+  // compostera hasta que se les asigne una labor (ver horasSinAsignar).
+  var hsPend=horasSinAsignar();
+  var costoGeneral=costoActsDestino('general')+hsPend.reduce(function(s,g){return s+g.costo;},0);
+  var horasPend=hsPend.reduce(function(s,g){return s+g.horas;},0);
   var pilasPD=DB.pilas.filter(esPredespacho).filter(pilaVigente);
   var tmPD=pilasPD.reduce(function(s,p){return s+tmD(p);},0);
   document.getElementById('dash-generales').innerHTML=
     '<div class="cost-card"><div class="cc-l"><i class="ti ti-tool"></i> Gastos generales</div>'
       +'<div class="cc-v" style="font-size:18px">'+(costoGeneral>0?fM(costoGeneral):'—')+'</div>'
-      +'<div class="cc-sub">limpieza, trash, traslados de máquina</div></div>'
+      +'<div class="cc-sub">limpieza, trash, traslados de máquina'+(horasPend>0?' · incluye '+fN(horasPend,2)+' h de cargador sin asignar':'')+'</div></div>'
     +'<div class="cost-card"><div class="cc-l"><i class="ti ti-truck-loading"></i> Pilas de predespacho</div>'
       +'<div class="cc-v">'+pilasPD.length+'</div>'
       +'<div class="cc-sub">'+fN(tmPD,1)+' TM en preparación</div></div>';
@@ -1965,13 +1969,103 @@ function rAl(){
     +'</div>';
   w.innerHTML=topHeader+seccionAlertas('Alertas de labores','ti-alert-triangle',alFiltrada,'marcarTodasLeidasLabores');
 }
+// Horas sin asignar de los Cargadores: diferencia entre las horas del
+// horómetro de un turno ya cerrado y la suma de las horas de las labores
+// registradas ese día (mismo operario y equipo). Es tiempo real de máquina y
+// por lo tanto costo de la compostera, pero nadie dijo en qué se usó — se
+// asigna con asignarHorasSinAsignar() y la diferencia desaparece sola.
+function horasSinAsignar(){
+  var grupos={};
+  function f10(v){return String(v||'').substring(0,10);}
+  (DB.turnos||[]).forEach(function(t){
+    if(String(t.estado).toLowerCase()!=='cerrado') return;
+    if(String(t.equipo||'').toLowerCase().indexOf('cargador')!==0) return;
+    var hi=parseFloat(t.horoIni),hf=parseFloat(t.horoFin);
+    if(isNaN(hi)||isNaN(hf)||hf<=hi) return;
+    var k=String(t.operario||'').toLowerCase().trim()+'|'+f10(t.fecha)+'|'+String(t.equipo).toLowerCase().trim();
+    if(!grupos[k]) grupos[k]={key:k,operario:t.operario,fecha:f10(t.fecha),equipo:t.equipo,horasTurno:0,horasLabores:0};
+    grupos[k].horasTurno+=hf-hi;
+  });
+  (DB.acts||[]).forEach(function(a){
+    var k=String(a.op||'').toLowerCase().trim()+'|'+f10(a.fecha)+'|'+String(a.equipo||'').toLowerCase().trim();
+    if(grupos[k]) grupos[k].horasLabores+=parseFloat(a.horas)||0;
+  });
+  var res=[];
+  Object.keys(grupos).forEach(function(k){
+    var g=grupos[k];
+    g.horas=Math.round((g.horasTurno-g.horasLabores)*100)/100;
+    if(g.horas<0.05) return;
+    var eq=(DB.eqs||[]).find(function(e){return String(e.n).toLowerCase().trim()===String(g.equipo).toLowerCase().trim();});
+    g.costo=eq?Math.round(g.horas*eqc(eq.id,g.fecha)*100)/100:0;
+    res.push(g);
+  });
+  return res.sort(function(a,b){return a.fecha.localeCompare(b.fecha);});
+}
+
 function rTMPend(){
   var alTM=alsTM(),w=document.getElementById('tmpend-wrap');
   if(!w) return;
+  var hs=horasSinAsignar();
+  var totH=hs.reduce(function(s,g){return s+g.horas;},0);
+  var totC=hs.reduce(function(s,g){return s+g.costo;},0);
+  var filasHs=hs.length?hs.map(function(g){
+    return '<tr><td>'+fmt(g.fecha)+'</td><td>'+g.equipo+'</td><td>'+(g.operario||'—')+'</td>'
+      +'<td style="text-align:right">'+fN(g.horasTurno,2)+'</td><td style="text-align:right">'+fN(g.horasLabores,2)+'</td>'
+      +'<td style="text-align:right"><strong style="color:var(--am)">'+fN(g.horas,2)+'</strong></td>'
+      +'<td style="text-align:right">'+fM(g.costo)+'</td>'
+      +'<td><button class="btn sm pr" onclick="abrirAsignarHoras('+q(g.key)+')"><i class="ti ti-edit"></i> Asignar</button></td></tr>';
+  }).join('')
+    +'<tr style="border-top:2px solid var(--bd2);font-weight:700;background:var(--cr2)"><td colspan="5">TOTAL sin asignar</td><td style="text-align:right">'+fN(totH,2)+'</td><td style="text-align:right">'+fM(totC)+'</td><td></td></tr>'
+    :'<tr><td colspan="8"><div class="em"><i class="ti ti-circle-check"></i>Todas las horas de los turnos de cargador están asignadas a una labor.</div></td></tr>';
   w.innerHTML='<div class="ap ap-i" style="margin-bottom:4px"><i class="ti ti-info-circle"></i><div>'
-    +'Labores del Cargador Frontal (traslados, predespacho, despacho) donde el operario ya cargó horas pero todavía falta ingresar el TM real (peso de báscula o estimado). '
-    +'Clic en cualquiera para ir directo a completarlo.</div></div>'
-    +seccionAlertas('TM pendiente de ingresar','ti-scale',alTM,'marcarTodasLeidasTM');
+    +'<strong>Pendientes de cerrar el ciclo.</strong> Arriba, labores con horas ya cargadas a las que falta el TM real. Abajo, horas de turno de los cargadores que no quedaron en ninguna labor.</div></div>'
+    +seccionAlertas('TM pendiente de ingresar','ti-scale',alTM,'marcarTodasLeidasTM')
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px">'
+      +'<span style="font-size:13px;font-weight:700;color:var(--ink2)"><i class="ti ti-clock-question"></i> Horas de cargador sin asignar — <strong>'+hs.length+'</strong> turno'+(hs.length!==1?'s':'')+'</span></div>'
+    +'<div class="ap ap-w" style="margin-bottom:8px"><i class="ti ti-alert-triangle"></i><div>Es la diferencia entre el horómetro del turno y las horas de las labores. Es tiempo real de máquina y mientras no se asigne cuenta como costo general de la compostera. Con <strong>Asignar</strong> le pones la labor y una descripción; si asignas solo una parte, el resto sigue pendiente.</div></div>'
+    +'<div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Equipo</th><th>Operario</th><th style="text-align:right">H. turno</th><th style="text-align:right">H. labores</th><th style="text-align:right">H. sin asignar</th><th style="text-align:right">Costo</th><th></th></tr></thead><tbody>'+filasHs+'</tbody></table></div></div>';
+}
+
+var asigGrupo=null;
+function abrirAsignarHoras(key){
+  var g=horasSinAsignar().find(function(x){return x.key===key;});
+  if(!g){toast('Ese turno ya no tiene horas pendientes','wn');return;}
+  asigGrupo=g;
+  var labs=DB.labs.filter(function(l){return l.destino==='pila'||l.destino==='origen'||l.destino==='general';});
+  var optsLab=labs.map(function(l){return'<option value="'+l.n+'">'+l.n+(l.destino==='general'?' — gasto general':'')+'</option>';}).join('');
+  var optsPila=DB.pilas.filter(pilaVigente).map(function(p){return'<option value="'+p.cod+'">'+p.cod+'</option>';}).join('');
+  var optsMont=DB.monts.map(function(m){return'<option value="'+m.id+'">'+m.n+'</option>';}).join('');
+  document.getElementById('mtit').textContent='Asignar horas — '+g.equipo+' · '+fmt(g.fecha);
+  document.getElementById('mbody').innerHTML=
+    '<div class="ap ap-i" style="margin-bottom:10px"><i class="ti ti-info-circle"></i><div>'+(g.operario||'—')+': el horómetro del turno marcó <strong>'+fN(g.horasTurno,2)+' h</strong> y las labores suman <strong>'+fN(g.horasLabores,2)+' h</strong>. Quedan <strong>'+fN(g.horas,2)+' h</strong> sin explicar.</div></div>'
+    +'<div class="fg2">'
+    +'<div class="fg"><label>Horas a asignar <span class="req">*</span></label><input type="number" id="as-horas" step="0.05" min="0.05" max="'+g.horas+'" value="'+g.horas+'"></div>'
+    +'<div class="fg"><label>Labor <span class="req">*</span></label><select id="as-labor" onchange="asigCambioLabor()">'+optsLab+'</select></div>'
+    +'<div class="fg full" id="as-dest-wrap"><label>Pila / montículo</label><select id="as-dest"><optgroup label="Pilas">'+optsPila+'</optgroup><optgroup label="Montículos">'+optsMont+'</optgroup></select></div>'
+    +'<div class="fg full"><label>Descripción <span class="req">*</span></label><textarea id="as-obs" placeholder="¿Qué hizo la máquina en ese tiempo?"></textarea></div>'
+    +'</div>'
+    +'<div class="fa"><button class="btn" onclick="closeM()">Cancelar</button><button class="btn pr" onclick="guardarAsignarHoras()"><i class="ti ti-check"></i> Asignar</button></div>';
+  document.getElementById('mover').classList.add('op');
+  asigCambioLabor();
+}
+function asigCambioLabor(){
+  var l=DB.labs.find(function(x){return x.n===document.getElementById('as-labor').value;});
+  var w=document.getElementById('as-dest-wrap'); if(w) w.style.display=(l&&l.destino==='general')?'none':'';
+}
+function guardarAsignarHoras(){
+  var g=asigGrupo; if(!g) return;
+  var horas=parseFloat(document.getElementById('as-horas').value);
+  var labor=document.getElementById('as-labor').value;
+  var obs=(document.getElementById('as-obs').value||'').trim();
+  var l=DB.labs.find(function(x){return x.n===labor;});
+  if(isNaN(horas)||horas<=0||horas>g.horas+0.001){toast('Horas inválidas (máximo '+fN(g.horas,2)+')','wn');return;}
+  if(!obs){toast('Escribe una descripción','wn');return;}
+  var dest=(l&&l.destino==='general')?'':document.getElementById('as-dest').value;
+  DB.acts.push({id:uid(),pila:dest,fecha:g.fecha,labor:labor,equipo:g.equipo,eqId:'',horas:horas,ch:0,cost:0,
+    op:g.operario||'',obs:'Horas sin asignar del turno — '+obs});
+  recalcularCostosConProrrateo();
+  sv();closeM();render();
+  toast(fN(horas,2)+' h asignadas a "'+labor+'"'+(g.horas-horas>0.049?' — quedan '+fN(g.horas-horas,2)+' h pendientes':''));
 }
 
 function toggleMov(cod){
@@ -4382,6 +4476,16 @@ function rRepMaquinaria(){
     if(isVolteoRiego(a.labor)) g.volteos++;   // cuenta volteos + riegos (mismo criterio que totalVolteos)
     g.dias[String(a.fecha||'').substring(0,10)]=true;
     if(a.pila) g.pilas[a.pila]=true;
+  });
+  // Cargadores: sus horas de turno sin asignar a ninguna labor (ver
+  // horasSinAsignar) entran como "H. sin asignar" y como costo, dentro del período.
+  horasSinAsignar().forEach(function(h){
+    if(repRango.desde && h.fecha<repRango.desde) return;
+    if(repRango.hasta && h.fecha>repRango.hasta) return;
+    if(!porMaq[h.equipo]) porMaq[h.equipo]={hEf:0,hTras:0,costo:0,volteos:0,dias:{},pilas:{}};
+    porMaq[h.equipo].hTras+=h.horas;
+    porMaq[h.equipo].costo+=h.costo;
+    porMaq[h.equipo].dias[h.fecha]=true;
   });
   var maqKeys=Object.keys(porMaq).sort();
   var totEf=0,totTras=0,totCosto=0,totVolteos=0;
