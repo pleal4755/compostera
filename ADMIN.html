@@ -1115,7 +1115,14 @@ function recalcularCostosConProrrateo(){
     });
 
     var factor, modo;
-    if(turno){
+    if(norm(g.equipo).indexOf('cargador')===0){
+      // Cargadores: cada labor ya trae su propio horómetro inicial/final, así
+      // que se cobra exactamente lo registrado. No se reparte el hueco entre
+      // el horómetro del turno y las labores (en Cargador 9, 25-sep, metía 0.4 h
+      // extra como "traslado"). El prorrateo sigue aplicando a los demás equipos
+      // (Backhus, etc.), donde el tiempo entre pilas sí es parte del cálculo.
+      factor = 1; modo = 'directo (cargador)';
+    } else if(turno){
       var horoIni = parseFloat(turno.horoIni); var horoFin = parseFloat(turno.horoFin);
       if(!isNaN(horoIni) && !isNaN(horoFin) && horoFin>horoIni){
         // Prorrateo: reparte el total de horas del día entre las horas asignadas
