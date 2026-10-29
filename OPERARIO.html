@@ -717,10 +717,25 @@ function pilasDelDia(){
     .forEach(function(t){ if(t.pila) cods[t.pila]=true; });
   return Object.keys(cods);
 }
+// Opciones de pila para las labores del cargador: antes solo se ofrecían las
+// pilas de las tareas del día, y un operario de cargador normalmente no tiene
+// tareas — quedaba "(sin pilas asignadas hoy)" y no se podía elegir nada
+// (Apilado, Manejo, etc.). Ahora salen todas las pilas activas, con las del
+// día y las de predespacho primero.
+function pilasActivasCods(){
+  return (DATOS.pilas||[]).filter(function(p){
+    return p.cod && p.estado!=='Finalizada' && p.estado!=='Despachada';
+  }).map(function(p){return p.cod;});
+}
 function pilasDelDiaOpts(){
-  var c=pilasDelDia();
-  return c.length ? c.map(function(x){return '<option value="'+x+'">'+x+'</option>';}).join('')
-    : '<option value="">(sin pilas asignadas hoy)</option>';
+  var dia=pilasDelDia(), pd=pilasPredespacho(), usadas={};
+  function grupo(titulo,lista){
+    lista=lista.filter(function(c){ if(usadas[c]) return false; usadas[c]=true; return true; });
+    return lista.length ? '<optgroup label="'+titulo+'">'+lista.map(function(x){return '<option value="'+x+'">'+x+'</option>';}).join('')+'</optgroup>' : '';
+  }
+  var otras=pilasActivasCods().sort(function(a,b){return b.localeCompare(a);});
+  var html=grupo('Mis pilas de hoy',dia)+grupo('Predespacho',pd)+grupo('Otras pilas activas',otras);
+  return html ? '<option value="">— elige la pila —</option>'+html : '<option value="">(sin pilas activas)</option>';
 }
 // Pilas de predespacho activas (código empieza con "PD-") — existen para
 // recibir horas de "Pre despacho" aunque no tengan tareas asignadas todavía,
@@ -733,10 +748,7 @@ function pilasPredespacho(){
 // Para el destino de "Pre despacho": pilas del día + pilas de predespacho,
 // sin duplicar.
 function pilasDestinoPreDespachoOpts(){
-  var c={}; pilasDelDia().forEach(function(x){c[x]=true;}); pilasPredespacho().forEach(function(x){c[x]=true;});
-  var cods=Object.keys(c);
-  return cods.length ? cods.map(function(x){return '<option value="'+x+'">'+x+'</option>';}).join('')
-    : '<option value="">(sin pilas disponibles)</option>';
+  return pilasDelDiaOpts();
 }
 function monticulosOpts(){
   var m=DATOS.monts||[];
